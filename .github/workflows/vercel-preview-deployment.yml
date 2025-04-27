@@ -1,0 +1,54 @@
+name: Vercel Preview Deployment
+on:
+  push:
+    branches-ignore:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  deploy-dev:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+      
+      - name: Pull Vercel Environment Variables
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+      
+      - name: Build Project
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+        
+      - name: Deploy to Preview Environment
+        run: |
+          # Get branch name for the deployment alias
+          BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g')
+          
+          # Deploy to Vercel
+          DEPLOYMENT_URL=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          echo "Deployed to: $DEPLOYMENT_URL"
+          
+          # Create a unique alias based on branch name
+          vercel alias set $DEPLOYMENT_URL ${BRANCH_NAME}-doppelgamble.vercel.app --token=${{ secrets.VERCEL_TOKEN }} || echo "Could not set alias, continuing..."
+          
+          # If this is from a PR, post the deployment URL as a comment
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "Posting deployment URL to PR"
+            PR_COMMENT="🚀 Preview deployment is ready! URL: ${DEPLOYMENT_URL}"
+            curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -X POST \
+              -d "{\"body\": \"$PR_COMMENT\"}" \
+              "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"
+          fi
