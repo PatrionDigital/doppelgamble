@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DoppelGamble Color Palette - Alice in Wonderland Tea Time</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    
+    body {
+      padding: 2rem;
+      max-width: 1200px;
+      margin: 0 auto;
+      background-color: #f9f9f9;
+    }
+    
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 2rem;
+      text-align: center;
+      color: #333;
+    }
+    
+    h2 {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid #eee;
+      color: #444;
+    }
+    
+    h3 {
+      font-size: 1.2rem;
+      margin-bottom: 0.5rem;
+      color: #555;
+    }
+    
+    section {
+      margin-bottom: 2.5rem;
+      background: white;
+      padding: 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    
+    .color-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+    }
+    
+    .color-swatch {
+      background-color: #f8f8f8;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.05);
+    }
+    
+    .color-preview {
+      height: 80px;
+      border-radius: 6px;
+      margin-bottom: 0.75rem;
+    }
+    
+    .color-name {
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+    
+    .color-hex {
+      font-family: monospace;
+      color: #666;
+      margin-bottom: 0.5rem;
+    }
+    
+    .color-description {
+      font-size: 0.875rem;
+      color: #777;
+    }
+    
+    .combo-container {
+      margin-bottom: 1.5rem;
+      background: #f8f8f8;
+      padding: 1rem;
+      border-radius: 8px;
+    }
+    
+    .combo-description {
+      font-size: 0.875rem;
+      color: #777;
+      margin-bottom: 0.75rem;
+    }
+    
+    .color-strip {
+      display: flex;
+      height: 60px;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    
+    .color-strip-item {
+      flex: 1;
+    }
+    
+    .two-column {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+    
+    .usage-tips {
+      list-style-position: inside;
+      padding-left: 1rem;
+    }
+    
+    .usage-tips li {
+      margin-bottom: 0.75rem;
+      line-height: 1.5;
+    }
+    
+    .code {
+      font-family: monospace;
+      background-color: #f5f5f5;
+      padding: 0.15rem 0.3rem;
+      border-radius: 3px;
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Alice in Wonderland Tea Time Color Palette</h1>
+  
+  <section>
+    <h2>Individual Colors</h2>
+    <div class="color-grid">
+      <!-- Rose Petal -->
+      <div class="color-swatch">
+        <div class="color-preview" style="background-color: #da62a0;"></div>
+        <p class="color-name">Rose Petal</p>
+        <p class="color-hex">#da62a0</p>
+        <p class="color-description">A vibrant pink reminiscent of fresh roses at the tea party</p>
+      </div>
+      
+      <!-- Pastel Pink -->
+      <div class="color-swatch">
+        <div class="color-preview" style="background-color: #edbbd5;"></div>
+        <p class="color-name">Pastel Pink</p>
+        <p class="color-hex">#edbbd5</p>
+        <p class="color-description">A soft pink like the Queen's delicate teacups</p>
+      </div>
+      
+      <!-- Sugar Pink -->
+      <div class="color-swatch">
+        <div class="color-preview" style="background-color: #f5dae8;"></div>
+        <p class="color-name">Sugar Pink</p>
+        <p class="color-hex">#f5dae8</p>
+        <p class="color-description">A light pink similar to sugared tea cakes</p>
+      </div>
+      
+      <!-- Mint Tea -->
+      <div class="color-swatch">
+        <div class="color-preview" style="background-color: #a5cdc2;"></div>
+        <p class="color-name">Mint Tea</p>
+        <p class="color-hex">#a5cdc2</p>
+        <p class="color-description">A calming green like freshly brewed mint tea</p>
+      </div>
+      
+      <!-- Clear Blue -->
+      <div class="color-swatch">
+        <div class="color-preview" style="background-color: #d3ecfb;"></div>
+        <p class="color-name">Clear Blue</p>
+        <p class="color-hex">#d3ecfb</p>
+        <p class="color-description">A pale blue reminiscent of Alice's dress</p>
+      </div>
+      
+      <!-- Baked Brown -->
+      <div class="color-swatch">
+        <div class="color-preview" style="background-color: #bc8c7f;"></div>
+        <p class="color-name">Baked Brown</p>
+        <p class="color-hex">#bc8c7f</p>
+        <p class="color-description">A warm brown like freshly baked scones</p>
+      </div>
+      
+      <!-- Scone Brown -->
+      <div class="color-swatch">
+        <div class="color-preview" style="background-color: #caae85;"></div>
+        <p class="color-name">Scone Brown</p>
+        <p class="color-hex">#caae85</p>
+        <p class="color-description">A light brown like buttered scones at tea time</p>
+      </div>
+      
+      <!-- Agate -->
+      <div class="color-swatch">
+        <div class="color-preview" style="background-color: #a00f20;"></div>
+        <p class="color-name">Agate</p>
+        <p class="color-hex">#a00f20</p>
+        <p class="color-description">A deep red like the Queen of Hearts' royal garments</p>
+      </div>
+    </div>
+  </section>
+  
+  <section>
+    <h2>Multi-Color Combinations</h2>
+    
+    <!-- Rose Garden, Dreamy -->
+    <div class="combo-container">
+      <h3>Rose Garden, Dreamy</h3>
+      <p class="combo-description">Soft and whimsical like a tea party in the garden</p>
+      <div class="color-strip">
+        <div class="color-strip-item" style="background-color: #edbbd5;"></div>
+        <div class="color-strip-item" style="background-color: #da62a0;"></div>
+        <div class="color-strip-item" style="background-color: #f5dae8;"></div>
+        <div class="color-strip-item" style="background-color: #a5cdc2;"></div>
+        <div class="color-strip-item" style="background-color: #caae85;"></div>
+      </div>
+    </div>
+    
+    <!-- Queen-like, Calling out Attention -->
+    <div class="combo-container">
+      <h3>Queen-like, Calling out Attention</h3>
+      <p class="combo-description">Bold and regal like the Queen of Hearts herself</p>
+      <div class="color-strip">
+        <div class="color-strip-item" style="background-color: #da62a0;"></div>
+        <div class="color-strip-item" style="background-color: #edbbd5;"></div>
+        <div class="color-strip-item" style="background-color: #d3ecfb;"></div>
+        <div class="color-strip-item" style="background-color: #bc8c7f;"></div>
+        <div class="color-strip-item" style="background-color: #caae85;"></div>
+        <div class="color-strip-item" style="background-color: #a00f20;"></div>
+      </div>
+    </div>
+  </section>
+  
+  <div class="two-column">
+    <section>
+      <h2>Dual-Color Combinations</h2>
+      
+      <!-- Soft Duo -->
+      <div class="combo-container">
+        <h3>Soft Duo</h3>
+        <p class="combo-description">Sugar Pink & Rose Petal</p>
+        <div class="color-strip">
+          <div class="color-strip-item" style="background-color: #f5dae8; flex: 1;"></div>
+          <div class="color-strip-item" style="background-color: #da62a0; flex: 1;"></div>
+        </div>
+      </div>
+      
+      <!-- Cool Duo -->
+      <div class="combo-container">
+        <h3>Cool Duo</h3>
+        <p class="combo-description">Pastel Pink & Clear Blue</p>
+        <div class="color-strip">
+          <div class="color-strip-item" style="background-color: #edbbd5; flex: 1;"></div>
+          <div class="color-strip-item" style="background-color: #d3ecfb; flex: 1;"></div>
+        </div>
+      </div>
+      
+      <!-- Contrast Duo -->
+      <div class="combo-container">
+        <h3>Contrast Duo</h3>
+        <p class="combo-description">Sugar Pink & Agate</p>
+        <div class="color-strip">
+          <div class="color-strip-item" style="background-color: #f5dae8; flex: 1;"></div>
+          <div class="color-strip-item" style="background-color: #a00f20; flex: 1;"></div>
+        </div>
+      </div>
+    </section>
+    
+    <section>
+      <h2>Three-Color Combinations</h2>
+      
+      <!-- Vibrant Trio -->
+      <div class="combo-container">
+        <h3>Vibrant Trio</h3>
+        <p class="combo-description">Rose Petal, Clear Blue & Agate</p>
+        <div class="color-strip">
+          <div class="color-strip-item" style="background-color: #da62a0; flex: 1;"></div>
+          <div class="color-strip-item" style="background-color: #d3ecfb; flex: 1;"></div>
+          <div class="color-strip-item" style="background-color: #a00f20; flex: 1;"></div>
+        </div>
+      </div>
+      
+      <!-- Earthy Trio -->
+      <div class="combo-container">
+        <h3>Earthy Trio</h3>
+        <p class="combo-description">Agate, Clear Blue & Baked Brown</p>
+        <div class="color-strip">
+          <div class="color-strip-item" style="background-color: #a00f20; flex: 1;"></div>
+          <div class="color-strip-item" style="background-color: #d3ecfb; flex: 1;"></div>
+          <div class="color-strip-item" style="background-color: #bc8c7f; flex: 1;"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+  <section>
+    <h2>Usage Tips</h2>
+    <ul class="usage-tips">
+      <li>Use <span class="code">text-wonderland-rose-petal</span> for primary text highlights</li>
+      <li>Use <span class="code">bg-wonderland-sugar-pink</span> for soft backgrounds</li>
+      <li>For themed components: <span class="code">bg-wonderland-dreamy-primary text-wonderland-dreamy-accent</span></li>
+      <li>For contrasting buttons: <span class="code">bg-wonderland-trio-vibrant-primary text-white</span></li>
+      <li>For subtle borders: <span class="code">border-wonderland-scone-brown</span></li>
+    </ul>
+  </section>
+  
+  <section>
+    <h2>CSS Variables Reference</h2>
+    <pre style="background-color: #f5f5f5; padding: 1rem; border-radius: 6px; overflow-x: auto; font-family: monospace; font-size: 0.875rem; line-height: 1.5;">
+:root {
+  /* Individual colors */
+  --wonderland-rose-petal: #da62a0;
+  --wonderland-pastel-pink: #edbbd5;
+  --wonderland-sugar-pink: #f5dae8;
+  --wonderland-mint-tea: #a5cdc2;
+  --wonderland-clear-blue: #d3ecfb;
+  --wonderland-baked-brown: #bc8c7f;
+  --wonderland-scone-brown: #caae85;
+  --wonderland-agate: #a00f20;
+  
+  /* Dreamy theme */
+  --wonderland-dreamy-primary: var(--wonderland-pastel-pink);
+  --wonderland-dreamy-secondary: var(--wonderland-rose-petal);
+  --wonderland-dreamy-tertiary: var(--wonderland-sugar-pink);
+  --wonderland-dreamy-accent: var(--wonderland-mint-tea);
+  --wonderland-dreamy-neutral: var(--wonderland-scone-brown);
+  
+  /* Queen theme */
+  --wonderland-queen-primary: var(--wonderland-rose-petal);
+  --wonderland-queen-secondary: var(--wonderland-pastel-pink);
+  --wonderland-queen-tertiary: var(--wonderland-clear-blue);
+  --wonderland-queen-accent: var(--wonderland-baked-brown);
+  --wonderland-queen-neutral: var(--wonderland-scone-brown);
+  --wonderland-queen-highlight: var(--wonderland-agate);
+}
+    </pre>
+  </section>
+</body>
+</html>
