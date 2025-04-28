@@ -28,7 +28,9 @@ import { GameInterface } from "./components/GameInterface";
 import { Button, Icon, Home, Features } from "./components/DemoComponents";
 
 export default function App() {
-  const { setFrameReady, isFrameReady, context } = useMiniKit();
+  const miniKit = useMiniKit();
+  console.log("Full MiniKit Object:", miniKit);
+  const { setFrameReady, isFrameReady, context } = miniKit;
   const [frameAdded, setFrameAdded] = useState(false);
   const [showDemo, setShowDemo] = useState(false); // Toggle to show original demo
   const viewProfile = useViewProfile();
