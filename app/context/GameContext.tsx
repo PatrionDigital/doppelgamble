@@ -1,16 +1,10 @@
 // app/context/GameContext.tsx
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useMemo } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { GameStatus, BetType, Player, Game } from "@/lib/db-types";
-import { useMiniKit, useAuthenticate, useViewProfile } from "@coinbase/onchainkit/minikit";
 import { useAccount } from "wagmi";
-
-// Define an interface for the Farcaster client structure
-interface FarcasterClient {
-  fid?: number;
-  id?: number;
-}
+import { useMiniKit } from "@coinbase/onchainkit/minikit";
 
 interface GameContextType {
   currentGame: Game | null;
@@ -27,9 +21,6 @@ interface GameContextType {
   placeBet: () => Promise<void>;
   recordPayment: (transactionHash: string) => Promise<void>;
   refreshGameStatus: () => Promise<void>;
-  authenticateFarcaster: () => Promise<void>;
-  viewFarcasterProfile: () => void;
-  isAuthenticated: boolean;
 }
 
 export enum GameStep {
@@ -43,15 +34,15 @@ export enum GameStep {
 
 export const GameContext = createContext<GameContextType | undefined>(undefined);
 
+// Helper type for accessing Farcaster client properties
+interface FarcasterClient {
+  fid?: number;
+  id?: number;
+}
+
 export function GameProvider({ children }: { children: ReactNode }) {
-  // Use MiniKit context for Farcaster data
+  const { address } = useAccount();
   const { context } = useMiniKit();
-  // Use wagmi for wallet data
-  const { address, isConnected } = useAccount();
-  // Use authenticate hook for Farcaster signin
-  const { signIn } = useAuthenticate();
-  // Use viewProfile hook
-  const viewProfile = useViewProfile();
   
   const [currentGame, setCurrentGame] = useState<Game | null>(null);
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
@@ -63,7 +54,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [gameStep, setGameStep] = useState<GameStep>(GameStep.WELCOME);
   const [farcasterFid, setFarcasterFid] = useState<number | null>(null);
   const [farcasterBirthday, setFarcasterBirthday] = useState<string | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Helper function to get FID from client safely
   const getFarcasterFid = useCallback((): number | null => {
@@ -74,11 +64,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const client = context.client as unknown as FarcasterClient;
     return client.fid || client.id || null;
   }, [context]);
-
-  // Check if user has Farcaster connection
-  const hasFarcaster = useMemo(() => {
-    return getFarcasterFid() !== null;
-  }, [getFarcasterFid]);
 
   // Effect to determine game step based on current state
   useEffect(() => {
@@ -110,65 +95,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setGameStep(GameStep.WAITING);
   }, [currentGame, currentPlayer]);
 
-  // View Farcaster profile
-  const viewFarcasterProfile = useCallback(() => {
-    if (hasFarcaster) {
-      viewProfile();
-    } else {
-      setError("Farcaster account not connected");
-    }
-  }, [hasFarcaster, viewProfile]);
-
-  // Authenticate with Farcaster
-  const authenticateFarcaster = useCallback(async () => {
-    if (!isConnected) {
-      setError("Please connect your wallet first");
-      return;
-    }
-
-    // Debugging
-    console.log("Wallet connected:", address);
-    console.log("MiniKit context:", context);
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const result = await signIn();
-      console.log("SignIn result:", result);
-
-      if (result) {
-        setIsAuthenticated(true);
-        
-        // Check for FID after authentication
-        const fid = getFarcasterFid();
-        
-        if (fid) {
-          console.log("Authenticated with Farcaster FID:", fid);
-          setFarcasterFid(fid);
-          
-          try {
-            const birthday = await getFarcasterBirthday(fid);
-            setFarcasterBirthday(birthday);
-          } catch (birthdayError) {
-            console.error("Error getting Farcaster birthday:", birthdayError);
-            setError("Failed to get your Farcaster birthday. Please try again.");
-          }
-        } else {
-          setError("Farcaster ID not found after authentication");
-        }
-      } else {
-        setError("Authentication failed");
-      }
-    } catch (error) {
-      console.error("Error authenticating with Farcaster:", error);
-      setError("Failed to authenticate with Farcaster. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  }, [isConnected, address, context, signIn, getFarcasterFid]);
-
-  // Get Farcaster birthday from our API
+  // Get Farcaster birthday - this is now an API call
   const getFarcasterBirthday = async (fid: number) => {
     try {
       const response = await fetch(`/api/farcaster-birthday?fid=${fid}`);
@@ -221,13 +148,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return;
     }
     
-    if (!farcasterFid) {
-      setError("Your Farcaster account is not connected");
-      return;
-    }
-    
-    if (!farcasterBirthday) {
-      setError("Unable to retrieve your Farcaster birthday");
+    if (!farcasterFid || !farcasterBirthday) {
+      setError("Missing Farcaster FID or birthday");
       return;
     }
 
@@ -340,56 +262,51 @@ export function GameProvider({ children }: { children: ReactNode }) {
   // Initialize Farcaster user data
   useEffect(() => {
     const initFarcasterData = async () => {
-      // Get FID using our helper function
+      // First, try to get FID from MiniKit context
       const fid = getFarcasterFid();
       
       if (fid) {
-        console.log("Found Farcaster FID:", fid);
+        console.log("Using Farcaster FID from context:", fid);
         setFarcasterFid(fid);
-        setIsAuthenticated(true);
         
         try {
-          setLoading(true);
           const birthday = await getFarcasterBirthday(fid);
           setFarcasterBirthday(birthday);
         } catch (error) {
-          console.error("Error setting Farcaster birthday:", error);
-          setError("Failed to get your Farcaster birthday. Please try again.");
-        } finally {
-          setLoading(false);
+          console.error("Error fetching Farcaster birthday:", error);
+          setError("Failed to get Farcaster birthday. Please try again.");
         }
-      } else if (process.env.NODE_ENV === 'development') {
-        // For development purposes only, use a mock FID
-        console.log('Using mock Farcaster data for development');
-        const mockFid = 13837;
+      } 
+      // If no FID in context and we're in development, use mock FID
+      else if (process.env.NODE_ENV === 'development' || 
+               process.env.NEXT_PUBLIC_VERCEL_ENV === 'preview') {
+        const mockFid = 13837; // Your FID for testing
+        console.log("Using mock Farcaster FID for development:", mockFid);
         setFarcasterFid(mockFid);
-        setIsAuthenticated(true);
         
         try {
-          setLoading(true);
           const birthday = await getFarcasterBirthday(mockFid);
           setFarcasterBirthday(birthday);
         } catch (error) {
-          console.error("Error setting Farcaster birthday:", error);
-          setError("Failed to get your Farcaster birthday. Please try again.");
-        } finally {
-          setLoading(false);
+          console.error("Error fetching Farcaster birthday:", error);
+          setError("Failed to get Farcaster birthday. Please try again.");
         }
+      } else {
+        console.log("No Farcaster FID available");
       }
     };
     
     initFarcasterData();
   }, [getFarcasterFid]);
 
-  // Check if user is in an existing game when FID changes
+  // Check if user is already in a game after FID is set
   useEffect(() => {
+    if (!farcasterFid) return;
+    
     const checkExistingGame = async () => {
-      if (!farcasterFid) return;
-      
-      // For demo purposes, check if there's any open game
-      // In production, this would be a more specific check
       try {
         setLoading(true);
+        // Check if there's a game with this FID
         const response = await fetch(`/api/game?fid=${farcasterFid}`);
         
         if (response.ok) {
@@ -441,9 +358,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
         placeBet,
         recordPayment,
         refreshGameStatus,
-        authenticateFarcaster,
-        viewFarcasterProfile,
-        isAuthenticated
       }}
     >
       {children}

@@ -39,10 +39,13 @@ export default function App() {
   const addFrame = useAddFrame();
 
   useEffect(() => {
+    console.log("Frame Ready:", isFrameReady);
     if (!isFrameReady) {
+      console.log("Frame not ready, setting frame ready state.");
       setFrameReady();
+      console.log("MiniKit Context:", context);
     }
-  }, [setFrameReady, isFrameReady]);
+  }, [setFrameReady, isFrameReady, context]);
 
   const handleAddFrame = useCallback(async () => {
     const frameAdded = await addFrame();
