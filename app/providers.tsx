@@ -1,7 +1,8 @@
+// app/providers.tsx - Updated to use Sepolia
 "use client";
 
 import { type ReactNode } from "react";
-import { base } from "wagmi/chains";
+import { sepolia } from "wagmi/chains";
 import { MiniKitProvider } from "@coinbase/onchainkit/minikit";
 
 export function Providers(props: { children: ReactNode }) {
@@ -10,7 +11,7 @@ export function Providers(props: { children: ReactNode }) {
   return (
     <MiniKitProvider
       apiKey={process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY}
-      chain={base}
+      chain={sepolia} // Changed from base to sepolia
       config={{
         appearance: {
           mode: "auto",
