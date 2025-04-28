@@ -21,6 +21,9 @@ interface GameContextType {
   placeBet: () => Promise<void>;
   recordPayment: (transactionHash: string) => Promise<void>;
   refreshGameStatus: () => Promise<void>;
+  isInActiveGame: boolean;
+  userGameId: string | null;
+  clearGameSession: () => void;
 }
 
 export enum GameStep {
@@ -48,21 +51,60 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [gameStep, setGameStep] = useState<GameStep>(GameStep.WELCOME);
   const [farcasterFid, setFarcasterFid] = useState<number | null>(null);
   const [farcasterBirthday, setFarcasterBirthday] = useState<string | null>(null);
+  const [isInActiveGame, setIsInActiveGame] = useState<boolean>(false);
+  const [userGameId, setUserGameId] = useState<string | null>(null);
+
+  // Clear current game session
+  const clearGameSession = useCallback(() => {
+    setCurrentGame(null);
+    setCurrentPlayer(null);
+    setAllPlayers([]);
+    setTotalPlayers(0);
+    setBetChoice(null);
+    setGameStep(GameStep.WELCOME);
+    setIsInActiveGame(false);
+    setUserGameId(null);
+    setError(null);
+  }, []);
 
   // Helper function to get FID from client safely
-const getFarcasterFid = useCallback((): number | null => {
-  if (!context) {
+  const getFarcasterFid = useCallback((): number | null => {
+    if (!context) {
+      return null;
+    }
+    
+    // First try to get FID from user object (production path)
+    if (context.user && typeof context.user === 'object' && context.user.fid) {
+      console.log("Found FID in context.user:", context.user.fid);
+      return context.user.fid;
+    }
+   
     return null;
-  }
-  
-  // First try to get FID from user object (production path)
-  if (context.user && typeof context.user === 'object' && context.user.fid) {
-    console.log("Found FID in context.user:", context.user.fid);
-    return context.user.fid;
-  }
- 
-  return null;
-}, [context]);
+  }, [context]);
+
+  // Check if user is already in an active game
+  const checkActiveGame = useCallback(async (fid: number): Promise<{isActive: boolean, gameId?: string}> => {
+    try {
+      // Make API call to check if the user is already in an active game
+      const response = await fetch(`/api/game?fid=${fid}`);
+      
+      if (!response.ok) {
+        throw new Error("Failed to check active games");
+      }
+      
+      const data = await response.json();
+      
+      // If game exists and is not resolved, user is in an active game
+      if (data.game && data.game.status !== GameStatus.RESOLVED) {
+        return { isActive: true, gameId: data.game.id };
+      }
+      
+      return { isActive: false };
+    } catch (error) {
+      console.error("Error checking active game:", error);
+      throw error;
+    }
+  }, []);
 
   // Effect to determine game step based on current state
   useEffect(() => {
@@ -132,6 +174,16 @@ const getFarcasterFid = useCallback((): number | null => {
       setCurrentPlayer(data.currentPlayer);
       setAllPlayers(data.players);
       setTotalPlayers(data.totalPlayers);
+      
+      // Update active game status
+      if (data.game && data.game.status !== GameStatus.RESOLVED) {
+        setIsInActiveGame(true);
+        setUserGameId(data.game.id);
+      } else if (data.game && data.game.status === GameStatus.RESOLVED) {
+        // Game is resolved, user is no longer in an active game
+        setIsInActiveGame(false);
+        // But we keep the userGameId so they can see results
+      }
     } catch (error) {
       console.error("Error refreshing game status:", error);
       // Don't set error to avoid disrupting the UI
@@ -156,6 +208,32 @@ const getFarcasterFid = useCallback((): number | null => {
     setError(null);
 
     try {
+      // First check if the user is already in an active game
+      const activeGameCheck = await checkActiveGame(farcasterFid);
+      
+      if (activeGameCheck.isActive) {
+        setError("You are already in an active game. You must wait for it to complete before joining another.");
+        setIsInActiveGame(true);
+        setUserGameId(activeGameCheck.gameId || null);
+        
+        // Load the active game data
+        if (activeGameCheck.gameId) {
+          const gameResponse = await fetch(`/api/game?gameId=${activeGameCheck.gameId}&fid=${farcasterFid}`);
+          
+          if (gameResponse.ok) {
+            const gameData = await gameResponse.json();
+            setCurrentGame(gameData.game);
+            setCurrentPlayer(gameData.currentPlayer);
+            setAllPlayers(gameData.players);
+            setTotalPlayers(gameData.totalPlayers);
+          }
+        }
+        
+        setLoading(false);
+        return;
+      }
+
+      // If not in an active game, proceed with joining a new game
       const response = await fetch("/api/game", {
         method: "POST",
         headers: {
@@ -169,26 +247,34 @@ const getFarcasterFid = useCallback((): number | null => {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to join game");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to join game");
       }
 
       const data = await response.json();
       setCurrentGame(data.game);
       setCurrentPlayer(data.player);
+      setIsInActiveGame(true);
+      setUserGameId(data.game.id);
       
       // Refresh game status
       await refreshGameStatus();
     } catch (error) {
       console.error("Error joining game:", error);
-      setError("Failed to join game. Please try again.");
+      setError(error instanceof Error ? error.message : "Failed to join game. Please try again.");
     } finally {
       setLoading(false);
     }
-  }, [address, farcasterFid, farcasterBirthday, refreshGameStatus]);
+  }, [address, farcasterFid, farcasterBirthday, refreshGameStatus, checkActiveGame]);
 
   // Place a bet
   const placeBet = useCallback(async () => {
-    if (!currentPlayer || !betChoice) {
+    if (!currentPlayer) {
+      setError("Player information not found");
+      return;
+    }
+    
+    if (!betChoice) {
       setError("Please select a bet option");
       return;
     }
@@ -209,14 +295,15 @@ const getFarcasterFid = useCallback((): number | null => {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to place bet");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to place bet");
       }
 
       // Refresh game status
       await refreshGameStatus();
     } catch (error) {
       console.error("Error placing bet:", error);
-      setError("Failed to place bet. Please try again.");
+      setError(error instanceof Error ? error.message : "Failed to place bet. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -245,14 +332,15 @@ const getFarcasterFid = useCallback((): number | null => {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to record payment");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to record payment");
       }
 
       // Refresh game status
       await refreshGameStatus();
     } catch (error) {
       console.error("Error recording payment:", error);
-      setError("Failed to record payment. Please try again.");
+      setError(error instanceof Error ? error.message : "Failed to record payment. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -306,16 +394,25 @@ const getFarcasterFid = useCallback((): number | null => {
       try {
         setLoading(true);
         // Check if there's a game with this FID
-        const response = await fetch(`/api/game?fid=${farcasterFid}`);
+        const activeGameCheck = await checkActiveGame(farcasterFid);
         
-        if (response.ok) {
-          const data = await response.json();
-          if (data.game) {
+        if (activeGameCheck.isActive && activeGameCheck.gameId) {
+          setIsInActiveGame(true);
+          setUserGameId(activeGameCheck.gameId);
+          
+          // Load the active game data
+          const response = await fetch(`/api/game?gameId=${activeGameCheck.gameId}&fid=${farcasterFid}`);
+          
+          if (response.ok) {
+            const data = await response.json();
             setCurrentGame(data.game);
             setCurrentPlayer(data.currentPlayer);
             setAllPlayers(data.players || []);
             setTotalPlayers(data.totalPlayers || 0);
           }
+        } else {
+          setIsInActiveGame(false);
+          setUserGameId(null);
         }
       } catch (error) {
         console.error("Error checking existing game:", error);
@@ -325,7 +422,7 @@ const getFarcasterFid = useCallback((): number | null => {
     };
     
     checkExistingGame();
-  }, [farcasterFid]);
+  }, [farcasterFid, checkActiveGame]);
 
   // Automatically refresh game status periodically
   useEffect(() => {
@@ -357,6 +454,9 @@ const getFarcasterFid = useCallback((): number | null => {
         placeBet,
         recordPayment,
         refreshGameStatus,
+        isInActiveGame,
+        userGameId,
+        clearGameSession
       }}
     >
       {children}
