@@ -34,12 +34,6 @@ export enum GameStep {
 
 export const GameContext = createContext<GameContextType | undefined>(undefined);
 
-// Helper type for accessing Farcaster client properties
-interface FarcasterClient {
-  fid?: number;
-  id?: number;
-}
-
 export function GameProvider({ children }: { children: ReactNode }) {
   const { address } = useAccount();
   const { context } = useMiniKit();
@@ -56,14 +50,19 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [farcasterBirthday, setFarcasterBirthday] = useState<string | null>(null);
 
   // Helper function to get FID from client safely
-  const getFarcasterFid = useCallback((): number | null => {
-    if (!context || !context.client || typeof context.client !== 'object') {
-      return null;
-    }
-    
-    const client = context.client as unknown as FarcasterClient;
-    return client.fid || client.id || null;
-  }, [context]);
+const getFarcasterFid = useCallback((): number | null => {
+  if (!context) {
+    return null;
+  }
+  
+  // First try to get FID from user object (production path)
+  if (context.user && typeof context.user === 'object' && context.user.fid) {
+    console.log("Found FID in context.user:", context.user.fid);
+    return context.user.fid;
+  }
+ 
+  return null;
+}, [context]);
 
   // Effect to determine game step based on current state
   useEffect(() => {
