@@ -4,7 +4,7 @@ import React, { useState } from "react";
 //import { useAccount } from "wagmi"; // Mock until we can fix the import
 import { useGame } from "../../context/GameContext";
 import { Card, Button, Icon } from "../ui/GameUI";
-/*import { 
+import { 
   Transaction, 
   TransactionButton, 
   TransactionError, 
@@ -17,28 +17,6 @@ import { Card, Button, Icon } from "../ui/GameUI";
   TransactionToastIcon, 
   TransactionToastLabel 
 } from "@coinbase/onchainkit/transaction";
-*/
-// Mock transaction components
-const Transaction = ({ children, calls, onSuccess, onError }: any) => {
-    return <div>{children}</div>;
-  };
-  
-  const TransactionButton = ({ children, className }: any) => {
-    return <button className={className}>{children}</button>;
-  };
-  
-  const TransactionStatus = ({ children }: any) => {
-    return <div>{children}</div>;
-  };
-  
-  const TransactionStatusAction = () => <div>Status Action</div>;
-  const TransactionStatusLabel = () => <div>Status Label</div>;
-  const TransactionToast = ({ children, className }: any) => {
-    return <div className={className}>{children}</div>;
-  };
-  const TransactionToastAction = () => <div>Toast Action</div>;
-  const TransactionToastIcon = () => <div>Toast Icon</div>;
-  const TransactionToastLabel = () => <div>Toast Label</div>;
 
 // Game wallet where funds will be sent
 const GAME_WALLET = process.env.NEXT_PUBLIC_GAME_WALLET || "0x1234567890123456789012345678901234567890";
@@ -48,9 +26,10 @@ export function PaymentInterface() {
     const address = "0x1234567890123456789012345678901234567890";
     const { betChoice, error, recordPayment } = useGame();
     const [transactionHash, setTransactionHash] = useState<string | null>(null);
-  
-    const handleSuccess = async (response: any) => {
+    console.log("Transaction Hash:", transactionHash);
+    const handleSuccess = async (response: never) => {
       // Mock transaction hash
+      console.log("Transaction successful:", response);
       const hash = "0x" + Math.random().toString(16).substring(2, 42);
       setTransactionHash(hash);
       
