@@ -1,10 +1,10 @@
-// app/components/game/PaymentInterface.tsx - Fixed TransactionButton implementation
+// app/components/game/PaymentInterface.tsx - Network-agnostic implementation
 "use client";
 
 import React, { useCallback } from "react";
 import { useGame } from "../../context/GameContext";
 import { Card, Button, Icon } from "../ui/GameUI";
-import { useAccount } from "wagmi";
+import { useAccount, useChainId } from "wagmi"; // Added useChainId
 import { 
   Transaction,
   TransactionButton,
@@ -20,12 +20,10 @@ import {
 } from "@coinbase/onchainkit/transaction";
 import { useNotification } from "@coinbase/onchainkit/minikit";
 
-// Test wallet where a zero-value transaction will be sent
-// This should be a wallet you control
-//const TEST_WALLET = "0x1234567890123456789012345678901234567890"; // Replace with your test wallet
-
 export function PaymentInterface() {
   const { address } = useAccount();
+  const chainId = useChainId(); // Get the current chain ID
+  
   const { 
     betChoice, 
     error, 
@@ -41,6 +39,7 @@ export function PaymentInterface() {
       const transactionHash = response.transactionReceipts[0].transactionHash;
       
       console.log("Transaction successful! Hash:", transactionHash);
+      console.log("Full response:", response);
 
       // Record both the bet and payment
       await recordPayment(transactionHash);
@@ -68,15 +67,28 @@ export function PaymentInterface() {
   }, [cancelJoining, loading]);
 
   // Create transaction params for a zero-value transaction to self (like in the example)
-  const calls = React.useMemo(() => address
-    ? [
-        {
-          to: address, // Send to self, just like in the example
-          data: "0x" as `0x${string}`,
-          value: BigInt(0), // Zero-value transaction
-        },
-      ]
-    : [], [address]);
+  const calls = React.useMemo(() => {
+    if (!address) return [];
+    
+    console.log("Generating transaction to self on chain ID:", chainId);
+    
+    return [
+      {
+        to: address, // Send to self, just like in the example
+        data: "0x" as `0x${string}`,
+        value: BigInt(0), // Zero-value transaction
+      },
+    ];
+  }, [address, chainId]);
+
+  // Determine network name based on chainId
+  const networkName = React.useMemo(() => {
+    switch(chainId) {
+      case 11155111: return "Sepolia";
+      case 8453: return "Base";
+      default: return "current network";
+    }
+  }, [chainId]);
 
   return (
     <Card title="Place Your Bet">
@@ -97,7 +109,7 @@ export function PaymentInterface() {
           
           <div className="flex justify-between items-center">
             <span className="font-medium">Test Transaction:</span>
-            <span className="font-bold">0 ETH (Sepolia)</span>
+            <span className="font-bold">0 ETH ({networkName})</span>
           </div>
         </div>
         
@@ -105,8 +117,8 @@ export function PaymentInterface() {
           <div className="flex items-start">
             <Icon name="info" className="text-[var(--app-accent)] mt-1 mr-3 flex-shrink-0" />
             <p className="text-sm">
-              This is a test transaction on Sepolia testnet. No actual funds will be transferred. 
-              You&apos;ll be betting that {betChoice === "yes" ? "someone" : "no one"} in the game shares your Farcaster birthday.
+              This is a test transaction that will send 0 ETH to your own wallet. 
+              You&apos;re betting that {betChoice === "yes" ? "someone" : "no one"} in the game shares your Farcaster birthday.
             </p>
           </div>
         </div>
@@ -119,7 +131,7 @@ export function PaymentInterface() {
         
         <div className="pt-2 space-y-2">
           {address ? (
-            <div className="flex flex-col items-center">
+            <div className="flex flex-col items-center w-full">
               <Transaction
                 calls={calls}
                 onSuccess={handleSuccess}
