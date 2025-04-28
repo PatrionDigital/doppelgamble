@@ -1,15 +1,10 @@
+// app/context/GameContext.tsx
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { GameStatus, BetType, Player, Game } from "@/lib/db-types";
-
-// Mock useAccount hook
-const useAccount = () => {
-  return {
-    address: "0x1234567890123456789012345678901234567890",
-    isConnected: true,
-  };
-};
+import { useAccount } from "wagmi";
+import { useMiniKit } from "@coinbase/onchainkit/minikit";
 
 interface GameContextType {
   currentGame: Game | null;
@@ -39,8 +34,15 @@ export enum GameStep {
 
 export const GameContext = createContext<GameContextType | undefined>(undefined);
 
+// Helper type for accessing Farcaster client properties
+interface FarcasterClient {
+  fid?: number;
+  id?: number;
+}
+
 export function GameProvider({ children }: { children: ReactNode }) {
   const { address } = useAccount();
+  const { context } = useMiniKit();
   
   const [currentGame, setCurrentGame] = useState<Game | null>(null);
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
@@ -52,6 +54,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [gameStep, setGameStep] = useState<GameStep>(GameStep.WELCOME);
   const [farcasterFid, setFarcasterFid] = useState<number | null>(null);
   const [farcasterBirthday, setFarcasterBirthday] = useState<string | null>(null);
+
+  // Helper function to get FID from client safely
+  const getFarcasterFid = useCallback((): number | null => {
+    if (!context || !context.client || typeof context.client !== 'object') {
+      return null;
+    }
+    
+    const client = context.client as unknown as FarcasterClient;
+    return client.fid || client.id || null;
+  }, [context]);
 
   // Effect to determine game step based on current state
   useEffect(() => {
@@ -131,8 +143,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   // Join a game
   const joinGame = useCallback(async () => {
-    if (!address || !farcasterFid || !farcasterBirthday) {
-      setError("Missing wallet address or Farcaster FID");
+    if (!address) {
+      setError("Please connect your wallet first");
+      return;
+    }
+    
+    if (!farcasterFid || !farcasterBirthday) {
+      setError("Missing Farcaster FID or birthday");
       return;
     }
 
@@ -242,89 +259,116 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
   }, [currentPlayer, refreshGameStatus]);
 
-  // Set Farcaster user
-  const setFarcasterUser = useCallback(async (fid: number) => {
-    try {
-      setFarcasterFid(fid);
-      const birthday = await getFarcasterBirthday(fid);
-      setFarcasterBirthday(birthday);
-      
-      // Check if user is already in a game - manually fetch rather than using refreshGameStatus
-      // to avoid circular dependency
-      if (currentGame?.id) {
-        setLoading(true);
-        try {
-          const response = await fetch(
-            `/api/game?gameId=${currentGame.id}&fid=${fid}`
-          );
-          if (response.ok) {
-            const data = await response.json();
-            setCurrentGame(data.game);
-            setCurrentPlayer(data.currentPlayer);
-            setAllPlayers(data.players);
-            setTotalPlayers(data.totalPlayers);
-          }
-        } catch (error) {
-          console.error("Error fetching game status:", error);
-        } finally {
-          setLoading(false);
-        }
-      }
-    } catch (error) {
-      console.error("Error setting Farcaster user:", error);
-      setError("Failed to get Farcaster birthday. Please try again.");
-    }
-  }, [currentGame?.id]);
-
   // Initialize Farcaster user data
   useEffect(() => {
-    // This would normally use Farcaster SDK or context
-    // For now, we'll use a mock FID for testing
-    const mockFid = 1234; // Replace with actual Farcaster integration
-    setFarcasterUser(mockFid);
-  }, [setFarcasterUser]);
+    const initFarcasterData = async () => {
+      // First, try to get FID from MiniKit context
+      const fid = getFarcasterFid();
+      
+      if (fid) {
+        console.log("Using Farcaster FID from context:", fid);
+        setFarcasterFid(fid);
+        
+        try {
+          const birthday = await getFarcasterBirthday(fid);
+          setFarcasterBirthday(birthday);
+        } catch (error) {
+          console.error("Error fetching Farcaster birthday:", error);
+          setError("Failed to get Farcaster birthday. Please try again.");
+        }
+      } 
+      // If no FID in context and we're in development, use mock FID
+      else if (process.env.NODE_ENV === 'development' || 
+               process.env.NEXT_PUBLIC_VERCEL_ENV === 'preview') {
+        const mockFid = 13837; // Your FID for testing
+        console.log("Using mock Farcaster FID for development:", mockFid);
+        setFarcasterFid(mockFid);
+        
+        try {
+          const birthday = await getFarcasterBirthday(mockFid);
+          setFarcasterBirthday(birthday);
+        } catch (error) {
+          console.error("Error fetching Farcaster birthday:", error);
+          setError("Failed to get Farcaster birthday. Please try again.");
+        }
+      } else {
+        console.log("No Farcaster FID available");
+      }
+    };
+    
+    initFarcasterData();
+  }, [getFarcasterFid]);
 
-// Automatically refresh game status periodically
-useEffect(() => {
-  if (!currentGame?.id) {
-    return;
-  }
+  // Check if user is already in a game after FID is set
+  useEffect(() => {
+    if (!farcasterFid) return;
+    
+    const checkExistingGame = async () => {
+      try {
+        setLoading(true);
+        // Check if there's a game with this FID
+        const response = await fetch(`/api/game?fid=${farcasterFid}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.game) {
+            setCurrentGame(data.game);
+            setCurrentPlayer(data.currentPlayer);
+            setAllPlayers(data.players || []);
+            setTotalPlayers(data.totalPlayers || 0);
+          }
+        }
+      } catch (error) {
+        console.error("Error checking existing game:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    checkExistingGame();
+  }, [farcasterFid]);
 
-  const interval = setInterval(() => {
-    refreshGameStatus();
-  }, 10000); // Refresh every 10 seconds
+  // Automatically refresh game status periodically
+  useEffect(() => {
+    if (!currentGame?.id) {
+      return;
+    }
 
-  return () => clearInterval(interval);
-}, [currentGame?.id, refreshGameStatus]);
+    const interval = setInterval(() => {
+      refreshGameStatus();
+    }, 10000); // Refresh every 10 seconds
 
-return (
-  <GameContext.Provider
-    value={{
-      currentGame,
-      currentPlayer,
-      allPlayers,
-      totalPlayers,
-      loading,
-      error,
-      betChoice,
-      setBetChoice,
-      gameStep,
-      setGameStep,
-      joinGame,
-      placeBet,
-      recordPayment,
-      refreshGameStatus,
-    }}
-  >
-    {children}
-  </GameContext.Provider>
-);
+    return () => clearInterval(interval);
+  }, [currentGame?.id, refreshGameStatus]);
+
+  return (
+    <GameContext.Provider
+      value={{
+        currentGame,
+        currentPlayer,
+        allPlayers,
+        totalPlayers,
+        loading,
+        error,
+        betChoice,
+        setBetChoice,
+        gameStep,
+        setGameStep,
+        joinGame,
+        placeBet,
+        recordPayment,
+        refreshGameStatus,
+      }}
+    >
+      {children}
+    </GameContext.Provider>
+  );
 }
 
 export function useGame() {
-const context = useContext(GameContext);
-if (context === undefined) {
-  throw new Error("useGame must be used within a GameProvider");
-}
-return context;
+  const context = useContext(GameContext);
+  if (context === undefined) {
+    throw new Error("useGame must be used within a GameProvider");
+  }
+  return context;
 }

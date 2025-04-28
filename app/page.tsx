@@ -28,7 +28,9 @@ import { GameInterface } from "./components/GameInterface";
 import { Button, Icon, Home, Features } from "./components/DemoComponents";
 
 export default function App() {
-  const { setFrameReady, isFrameReady, context } = useMiniKit();
+  const miniKit = useMiniKit();
+  console.log("Full MiniKit Object:", miniKit);
+  const { setFrameReady, isFrameReady, context } = miniKit;
   const [frameAdded, setFrameAdded] = useState(false);
   const [showDemo, setShowDemo] = useState(false); // Toggle to show original demo
   const viewProfile = useViewProfile();
@@ -37,10 +39,13 @@ export default function App() {
   const addFrame = useAddFrame();
 
   useEffect(() => {
+    console.log("Frame Ready:", isFrameReady);
     if (!isFrameReady) {
+      console.log("Frame not ready, setting frame ready state.");
       setFrameReady();
+      console.log("MiniKit Context:", context);
     }
-  }, [setFrameReady, isFrameReady]);
+  }, [setFrameReady, isFrameReady, context]);
 
   const handleAddFrame = useCallback(async () => {
     const frameAdded = await addFrame();

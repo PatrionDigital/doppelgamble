@@ -1,17 +1,20 @@
+// app/components/game/Welcome.tsx
 "use client";
 
 import React from "react";
 import { useGame } from "../../context/GameContext";
 import { Card, Button } from "../ui/GameUI";
+import { useAccount } from "wagmi";
 
 export function Welcome() {
   const { joinGame, error } = useGame();
+  const { isConnected } = useAccount();
 
   return (
     <Card title="Welcome to DoppelGamble!">
       <div className="space-y-4">
         <p className="text-[var(--app-foreground-muted)]">
-          Test the birthday paradox with real Farcaster birthdays! In a group of just 23 people, there&apos;s a 50% chance that at least two people share the same birthday.
+          Test the birthday paradox with real Farcaster birthdays! In a group of just 23 randomly chosen people, there&apos;s a 50% chance that at least two people share the same birthday.
         </p>
         
         <div className="space-y-2">
@@ -31,8 +34,12 @@ export function Welcome() {
         )}
         
         <div className="pt-2">
-          <Button onClick={joinGame} className="w-full">
-            Join Game
+          <Button 
+            onClick={joinGame} 
+            className="w-full"
+            disabled={!isConnected}
+          >
+            {isConnected ? "Join Game" : "Connect Wallet to Join"}
           </Button>
         </div>
       </div>

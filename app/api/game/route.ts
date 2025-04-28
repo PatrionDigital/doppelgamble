@@ -42,11 +42,38 @@ export async function POST(request: Request) {
 }
 
 // Get game status
+// app/api/game/route.ts (updated GET handler)
+// This is a partial update focused on the GET method
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const gameId = searchParams.get("gameId");
     const fid = searchParams.get("fid");
+
+    // If no gameId but we have fid, find games for this user
+    if (!gameId && fid) {
+      // Find the most recent game for this user
+      try {
+        // This would need to be implemented in your db.ts module
+        // const playerGames = await db.getPlayerGames(Number(fid));
+        
+        // For now, since we don't have that function, we'll return a mock response
+        return NextResponse.json({
+          message: "No active games found for this user",
+          currentPlayer: null,
+          game: null,
+          players: [],
+          totalPlayers: 0
+        });
+      } catch (error) {
+        console.error("Error finding games for user:", error);
+        return NextResponse.json(
+          { error: "Failed to find games for user" },
+          { status: 500 }
+        );
+      }
+    }
 
     if (!gameId) {
       return NextResponse.json(
@@ -55,6 +82,7 @@ export async function GET(request: Request) {
       );
     }
     
+    // Rest of the original handler for when gameId is provided
     // Get game info
     const game = await db.getGameById(gameId);
     
