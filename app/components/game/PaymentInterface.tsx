@@ -1,41 +1,45 @@
 "use client";
 
-import React, { useState } from "react";
-//import { useAccount } from "wagmi"; // Mock until we can fix the import
+import React, {useCallback } from "react";
 import { useGame } from "../../context/GameContext";
 import { Card, Button, Icon } from "../ui/GameUI";
+import { useAccount } from "wagmi";
 import { 
-  Transaction, 
-  TransactionButton, 
-  TransactionError, 
-  TransactionStatus, 
-  TransactionStatusAction, 
-  TransactionStatusLabel, 
-  TransactionToast, 
-  TransactionToastAction, 
-  TransactionToastIcon, 
-  TransactionToastLabel 
+  Transaction,
+    TransactionButton,
+    TransactionToast,
+    TransactionToastAction,
+    TransactionToastIcon,
+    TransactionToastLabel,
+    TransactionError,
+    TransactionResponse,
+    TransactionStatusAction,
+    TransactionStatusLabel,
+    TransactionStatus,
 } from "@coinbase/onchainkit/transaction";
+import { useNotification } from "@coinbase/onchainkit/minikit";
 
 // Game wallet where funds will be sent
 const GAME_WALLET = process.env.NEXT_PUBLIC_GAME_WALLET || "0x1234567890123456789012345678901234567890";
 
 export function PaymentInterface() {
     // Mock address
-    const address = "0x1234567890123456789012345678901234567890";
-    const { betChoice, error, recordPayment } = useGame();
-    const [transactionHash, setTransactionHash] = useState<string | null>(null);
-    console.log("Transaction Hash:", transactionHash);
-    const handleSuccess = async (response: never) => {
-      // Mock transaction hash
-      console.log("Transaction successful:", response);
-      const hash = "0x" + Math.random().toString(16).substring(2, 42);
-      setTransactionHash(hash);
+    const address = useAccount();
+
+    const { betChoice, error } = useGame();
+
+    const sendNotification = useNotification();
+
+    const handleSuccess = useCallback(async(response: TransactionResponse) => {
+      const transactionHash = response.transactionReceipts[0].transactionHash;
       
-      if (hash) {
-        await recordPayment(hash);
-      }
-    };
+      console.log("Transaction Hash:", transactionHash);
+
+      await sendNotification({
+        title: 'Transaction Successful',
+        body: `You send your transaction: ${transactionHash}`,
+      });
+    },[sendNotification]);
 
   // Create transaction params for 0.5 USDC
   const generateTransactionCalls = () => {
@@ -106,9 +110,7 @@ export function PaymentInterface() {
                 console.error("Transaction failed:", error)
               }
             >
-              <TransactionButton className="w-full py-2 bg-[var(--app-accent)] text-white rounded-lg hover:bg-[var(--app-accent-hover)]">
-                Pay 0.5 USDC
-              </TransactionButton>
+              <TransactionButton className="w-full py-2 bg-[var(--app-accent)] text-white rounded-lg hover:bg-[var(--app-accent-hover)]"/>
               <TransactionStatus>
                 <TransactionStatusAction />
                 <TransactionStatusLabel />
