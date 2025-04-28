@@ -1,4 +1,4 @@
-// app/context/GameContext.tsx
+// app/context/GameContext.tsx - Complete updated version
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
@@ -24,6 +24,10 @@ interface GameContextType {
   isInActiveGame: boolean;
   userGameId: string | null;
   clearGameSession: () => void;
+  cancelJoining: () => Promise<void>;
+  resetBet: () => void;
+  paymentCompleted: boolean;
+  setPaymentCompleted: (completed: boolean) => void;
 }
 
 export enum GameStep {
@@ -53,6 +57,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [farcasterBirthday, setFarcasterBirthday] = useState<string | null>(null);
   const [isInActiveGame, setIsInActiveGame] = useState<boolean>(false);
   const [userGameId, setUserGameId] = useState<string | null>(null);
+  const [paymentCompleted, setPaymentCompleted] = useState<boolean>(false);
 
   // Clear current game session
   const clearGameSession = useCallback(() => {
@@ -65,6 +70,49 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setIsInActiveGame(false);
     setUserGameId(null);
     setError(null);
+    setPaymentCompleted(false);
+  }, []);
+
+  // Cancel joining process
+  const cancelJoining = useCallback(async () => {
+    if (!currentPlayer) {
+      return; // Nothing to cancel
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Remove the player from the database
+      await fetch(`/api/cancel-joining`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          playerId: currentPlayer.id,
+        }),
+      });
+
+      // Reset local state
+      setCurrentPlayer(null);
+      setCurrentGame(null);
+      setBetChoice(null);
+      setPaymentCompleted(false);
+      setGameStep(GameStep.WELCOME);
+      setIsInActiveGame(false);
+      setUserGameId(null);
+    } catch (error) {
+      console.error("Error cancelling joining:", error);
+      setError("Failed to cancel. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPlayer]);
+
+  // Reset bet choice
+  const resetBet = useCallback(() => {
+    setBetChoice(null);
   }, []);
 
   // Helper function to get FID from client safely
@@ -267,7 +315,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
   }, [address, farcasterFid, farcasterBirthday, refreshGameStatus, checkActiveGame]);
 
-  // Place a bet
+  // Place a bet - UPDATED to not send bet to server yet
   const placeBet = useCallback(async () => {
     if (!currentPlayer) {
       setError("Player information not found");
@@ -279,11 +327,24 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Instead of sending to server immediately, we'll just update the game step
+    // The actual recording will happen after payment confirmation
+    setGameStep(GameStep.PAYING);
+  }, [currentPlayer, betChoice]);
+
+  // Record payment - UPDATED to also record the bet
+  const recordPayment = useCallback(async (transactionHash: string) => {
+    if (!currentPlayer || !betChoice) {
+      setError("Missing player information or bet choice");
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch("/api/bet", {
+      // First record the bet
+      const betResponse = await fetch("/api/bet", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -294,33 +355,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
+      if (!betResponse.ok) {
+        const errorData = await betResponse.json();
         throw new Error(errorData.error || "Failed to place bet");
       }
 
-      // Refresh game status
-      await refreshGameStatus();
-    } catch (error) {
-      console.error("Error placing bet:", error);
-      setError(error instanceof Error ? error.message : "Failed to place bet. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  }, [currentPlayer, betChoice, refreshGameStatus]);
-
-  // Record payment
-  const recordPayment = useCallback(async (transactionHash: string) => {
-    if (!currentPlayer) {
-      setError("Player information not found");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/payment", {
+      // Then record the payment
+      const paymentResponse = await fetch("/api/payment", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -331,11 +372,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
+      if (!paymentResponse.ok) {
+        const errorData = await paymentResponse.json();
         throw new Error(errorData.error || "Failed to record payment");
       }
 
+      setPaymentCompleted(true);
+      
       // Refresh game status
       await refreshGameStatus();
     } catch (error) {
@@ -344,7 +387,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [currentPlayer, refreshGameStatus]);
+  }, [currentPlayer, betChoice, refreshGameStatus]);
 
   // Initialize Farcaster user data
   useEffect(() => {
@@ -456,7 +499,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
         refreshGameStatus,
         isInActiveGame,
         userGameId,
-        clearGameSession
+        clearGameSession,
+        cancelJoining,
+        resetBet,
+        paymentCompleted,
+        setPaymentCompleted
       }}
     >
       {children}

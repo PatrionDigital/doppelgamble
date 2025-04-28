@@ -1,4 +1,4 @@
-// app/components/game/JoinGame.tsx - Fixed version
+// app/components/game/JoinGame.tsx - Add cancel functionality
 "use client";
 
 import React from "react";
@@ -12,8 +12,17 @@ export function JoinGame() {
     joinGame, 
     error, 
     isInActiveGame,
-    loading
+    loading,
+    cancelJoining
   } = useGame();
+
+  const handleCancel = async () => {
+    if (loading) return;
+    
+    if (confirm("Are you sure you want to cancel joining this game?")) {
+      await cancelJoining();
+    }
+  };
 
   return (
     <Card title="Ready to Play">
@@ -60,7 +69,7 @@ export function JoinGame() {
           </div>
         )}
         
-        <div className="pt-2">
+        <div className="pt-2 space-y-2">
           <Button 
             onClick={joinGame} 
             className="w-full"
@@ -73,6 +82,17 @@ export function JoinGame() {
               </div>
             ) : isInActiveGame ? "Continue to My Game" : "Confirm and Join"}
           </Button>
+          
+          {!isInActiveGame && (
+            <Button 
+              variant="outline" 
+              className="w-full" 
+              onClick={handleCancel}
+              disabled={loading}
+            >
+              Cancel
+            </Button>
+          )}
         </div>
       </div>
     </Card>

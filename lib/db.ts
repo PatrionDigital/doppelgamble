@@ -137,6 +137,19 @@ export async function addPlayerToGame(
   };
 }
 
+// Remove a player from a game
+export async function removePlayer(playerId: string): Promise<void> {
+  try {
+    await client.execute({
+      sql: 'DELETE FROM players WHERE id = ?',
+      args: [playerId]
+    });
+    console.log(`Player ${playerId} removed from game`);
+  } catch (error) {
+    console.error("Failed to remove player:", error);
+    throw error;
+  }
+}
 // Check if a player is in any active game
 export async function isPlayerInActiveGame(fid: number): Promise<{isActive: boolean, gameId?: string}> {
   try {
