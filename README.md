@@ -1,15 +1,40 @@
-# MiniKit Template
+# DoppelGamble
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-onchain --mini`](), configured with:
+A birthday paradox betting game built with MiniKit for Farcaster. Test the birthday paradox with real Farcaster birthdays!
 
-- [MiniKit](https://docs.base.org/builderkits/minikit/overview)
-- [OnchainKit](https://www.base.org/builders/onchainkit)
-- [Tailwind CSS](https://tailwindcss.com)
-- [Next.js](https://nextjs.org/docs)
+## How It Works
+
+1. **Join a Game**: Enter a game with up to 23 Farcaster users
+2. **Place Your Bet**: Bet 0.5 USDC on whether anyone will share your Farcaster birthday
+3. **Wait for Results**: Once the game is full, the results are calculated
+4. **Collect Winnings**: Winners split the pot!
+
+## The Birthday Paradox
+
+The birthday paradox states that in a group of just 23 randomly chosen people, there's a 50% chance that at least two people share the same birthday. This counterintuitive probability demonstrates how quickly collision probabilities grow in small sample sizes.
+
+In DoppelGamble, we use Farcaster registration dates ("Farcaster birthdays") to test this mathematical phenomenon with real data.
+
+## Tech Stack
+
+- [Next.js](https://nextjs.org) - React framework
+- [MiniKit](https://docs.base.org/builderkits/minikit/overview) - Farcaster mini-apps framework
+- [OnchainKit](https://www.base.org/builders/onchainkit) - Web3 components
+- [Tailwind CSS](https://tailwindcss.com) - CSS framework
+- [TursoDB](https://turso.tech) - SQLite database
+- [Farcaster API](https://docs.farcaster.xyz/) - User data and notifications
 
 ## Getting Started
 
-1. Install dependencies:
+1. Clone the repository
+
+```bash
+git clone https://github.com/yourusername/doppelgamble.git
+cd doppelgamble
+```
+
+2. Install dependencies
+
 ```bash
 npm install
 # or
@@ -20,85 +45,85 @@ pnpm install
 bun install
 ```
 
-2. Verify environment variables, these will be set up by the `npx create-onchain --mini` command:
+3. Set up the environment variables
 
-You can regenerate the FARCASTER Account Assocation environment variables by running `npx create-onchain --manifest` in your project directory.
-
-The environment variables enable the following features:
-
-- Frame metadata - Sets up the Frame Embed that will be shown when you cast your frame
-- Account assocation - Allows users to add your frame to their account, enables notifications
-- Redis API keys - Enable Webhooks and background notifications for your application by storing users notification details
+Copy the `.env.example` file to `.env.local` and fill in the required values.
 
 ```bash
-# Required for Frame metadata
-NEXT_PUBLIC_URL=
-NEXT_PUBLIC_VERSION=
-NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME=
-NEXT_PUBLIC_ICON_URL=
-NEXT_PUBLIC_IMAGE_URL=
-NEXT_PUBLIC_SPLASH_IMAGE_URL=
-NEXT_PUBLIC_SPLASH_BACKGROUND_COLOR=
-
-# Required to allow users to add your frame
-FARCASTER_HEADER=
-FARCASTER_PAYLOAD=
-FARCASTER_SIGNATURE=
-
-# Required for webhooks and background notifications
-REDIS_URL=
-REDIS_TOKEN=
+cp .env.example .env.local
 ```
 
-3. Start the development server:
+Required environment variables:
+
+- TursoDB credentials
+- Farcaster Frame configuration
+- Game wallet address
+- Security keys
+
+4. Start the development server
+
 ```bash
 npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-## Template Features
+5. Visit `http://localhost:3000` to see the application
 
-### Frame Configuration
-- `.well-known/farcaster.json` endpoint configured for Frame metadata and account association
-- Frame metadata automatically added to page headers in `layout.tsx`
+## Setting up TursoDB
 
-### Background Notifications
-- Redis-backed notification system using Upstash
-- Ready-to-use notification endpoints in `api/notify` and `api/webhook`
-- Notification client utilities in `lib/notification-client.ts`
+1. Create a Turso account at [turso.tech](https://turso.tech)
+2. Create a new database
 
-### Theming
-- Custom theme defined in `theme.css` with OnchainKit variables
-- Pixel font integration with Pixelify Sans
-- Dark/light mode support through OnchainKit
+```bash
+turso db create doppelgamble
+```
 
-### MiniKit Provider
-The app is wrapped with `MiniKitProvider` in `providers.tsx`, configured with:
-- OnchainKit integration
-- Access to Frames context
-- Sets up Wagmi Connectors
-- Sets up Frame SDK listeners
-- Applies Safe Area Insets
+3. Get the database URL and auth token
 
-## Customization
+```bash
+turso db show doppelgamble --url
+turso auth token
+```
 
-To get started building your own frame, follow these steps:
+4. Add these to your `.env.local` file
 
-1. Remove the DemoComponents:
-   - Delete `components/DemoComponents.tsx`
-   - Remove demo-related imports from `page.tsx`
+## Deployment
 
-2. Start building your Frame:
-   - Modify `page.tsx` to create your Frame UI
-   - Update theme variables in `theme.css`
-   - Adjust MiniKit configuration in `providers.tsx`
+This application is designed to be deployed to a platform like Vercel or Netlify.
 
-3. Add your frame to your account:
-   - Cast your frame to see it in action
-   - Share your frame with others to start building your community
+1. Push your code to GitHub
+2. Connect your repository to Vercel or Netlify
+3. Configure the environment variables in the deployment platform
+4. Deploy!
 
-## Learn More
+## Setting Up Cron Jobs
 
-- [MiniKit Documentation](https://docs.base.org/builderkits/minikit/overview)
-- [OnchainKit Documentation](https://docs.base.org/builderkits/onchainkit/getting-started)
-- [Next.js Documentation](https://nextjs.org/docs)
-- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
+For the game resolution to work automatically, you need to set up a cron job that calls the `/api/cron` endpoint periodically.
+
+1. On Vercel, you can use Vercel Cron:
+
+```json
+{
+  "crons": [
+    {
+      "path": "/api/cron?key=your-cron-secret-key",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}
+```
+
+2. On other platforms, you can use services like GitHub Actions, Netlify Functions, or dedicated cron job services.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+[MIT](LICENSE)
