@@ -1,16 +1,37 @@
+// app/providers.tsx - Updated with better Sepolia configuration
 "use client";
 
 import { type ReactNode } from "react";
-import { base } from "wagmi/chains";
+import { sepolia } from "wagmi/chains";
 import { MiniKitProvider } from "@coinbase/onchainkit/minikit";
 
 export function Providers(props: { children: ReactNode }) {
-  console.log("OnchainKit API Key:", process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY);
+  // Define Sepolia chain with more complete configuration
+  const sepoliaChain = {
+    ...sepolia,
+    // Make sure we have the right RPC URL
+    rpcUrls: {
+      default: {
+        http: ['https://rpc.sepolia.org', 'https://sepolia.infura.io/v3/']
+      },
+      public: {
+        http: ['https://rpc.sepolia.org', 'https://sepolia.infura.io/v3/']
+      }
+    },
+    // Ensure these are set for better compatibility
+    testnet: true,
+    blockExplorers: {
+      default: {
+        name: 'Sepolia Etherscan',
+        url: 'https://sepolia.etherscan.io'
+      }
+    }
+  };
   
   return (
     <MiniKitProvider
       apiKey={process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY}
-      chain={base}
+      chain={sepoliaChain}
       config={{
         appearance: {
           mode: "auto",
