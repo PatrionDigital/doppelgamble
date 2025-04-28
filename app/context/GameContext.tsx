@@ -332,7 +332,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setGameStep(GameStep.PAYING);
   }, [currentPlayer, betChoice]);
 
-  // Record payment - UPDATED to also record the bet
+  // Record payment of the bet
   const recordPayment = useCallback(async (transactionHash: string) => {
     if (!currentPlayer || !betChoice) {
       setError("Missing player information or bet choice");
@@ -344,6 +344,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     try {
       // First record the bet
+      console.log("Recording bet with params:", {
+        playerId: currentPlayer.id,
+        bet: betChoice,
+      });
+      
       const betResponse = await fetch("/api/bet", {
         method: "POST",
         headers: {
@@ -355,12 +360,21 @@ export function GameProvider({ children }: { children: ReactNode }) {
         }),
       });
 
+      // Log both the status and response body for debugging
+      console.log("Bet API response status:", betResponse.status);
+      const betResponseData = await betResponse.json();
+      console.log("Bet API response data:", betResponseData);
+
       if (!betResponse.ok) {
-        const errorData = await betResponse.json();
-        throw new Error(errorData.error || "Failed to place bet");
+        throw new Error(betResponseData.error || "Failed to place bet");
       }
 
       // Then record the payment
+      console.log("Recording payment with params:", {
+        playerId: currentPlayer.id,
+        transactionHash,
+      });
+      
       const paymentResponse = await fetch("/api/payment", {
         method: "POST",
         headers: {
@@ -372,12 +386,17 @@ export function GameProvider({ children }: { children: ReactNode }) {
         }),
       });
 
+      // Log both the status and response body for debugging
+      console.log("Payment API response status:", paymentResponse.status);
+      const paymentResponseData = await paymentResponse.json();
+      console.log("Payment API response data:", paymentResponseData);
+
       if (!paymentResponse.ok) {
-        const errorData = await paymentResponse.json();
-        throw new Error(errorData.error || "Failed to record payment");
+        throw new Error(paymentResponseData.error || "Failed to record payment");
       }
 
       setPaymentCompleted(true);
+      console.log("Payment completed successfully!");
       
       // Refresh game status
       await refreshGameStatus();

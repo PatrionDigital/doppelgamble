@@ -20,7 +20,7 @@ export function Welcome() {
         <div className="space-y-2">
           <h3 className="font-medium text-[var(--app-foreground)]">How to play:</h3>
           <ul className="list-disc pl-5 text-sm text-[var(--app-foreground-muted)]">
-            <li>Join a game with 23 other Farcaster users</li>
+            <li>Join a game with 22 other Farcaster users</li>
             <li>Bet 0.5 USDC on whether anyone will share your Farcaster birthday</li>
             <li>Wait for the game to fill up and see the results</li>
             <li>Winners split the pot!</li>

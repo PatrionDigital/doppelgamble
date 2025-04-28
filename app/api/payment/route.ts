@@ -1,12 +1,18 @@
+// app/api/payment/route.ts - Enhanced error handling
 import { NextResponse } from "next/server";
 import * as db from "@/lib/db";
 
 // Record payment
 export async function POST(request: Request) {
   try {
-    const { playerId, transactionHash } = await request.json();
+    console.log("Received payment request");
+    const body = await request.json();
+    console.log("Payment request body:", body);
+    
+    const { playerId, transactionHash } = body;
     
     if (!playerId || !transactionHash) {
+      console.log("Missing required fields:", { playerId, transactionHash });
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -14,7 +20,19 @@ export async function POST(request: Request) {
     }
     
     // Mark player as paid
-    await db.markPlayerAsPaid(playerId);
+    try {
+      await db.markPlayerAsPaid(playerId);
+      console.log("Player marked as paid:", playerId);
+    } catch (dbError) {
+      console.error("Database error marking player as paid:", dbError);
+      return NextResponse.json(
+        { 
+          error: "Database error marking player as paid",
+          details: dbError instanceof Error ? dbError.message : String(dbError)
+        },
+        { status: 500 }
+      );
+    }
     
     // Log the transaction for verification
     console.log(`Payment recorded: Player ${playerId}, Transaction: ${transactionHash}`);
