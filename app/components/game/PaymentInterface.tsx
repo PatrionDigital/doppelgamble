@@ -1,21 +1,22 @@
+// app/components/game/PaymentInterface.tsx - Updated for payment flow
 "use client";
 
-import React, {useCallback } from "react";
+import React, { useCallback } from "react";
 import { useGame } from "../../context/GameContext";
 import { Card, Button, Icon } from "../ui/GameUI";
 import { useAccount } from "wagmi";
 import { 
   Transaction,
-    TransactionButton,
-    TransactionToast,
-    TransactionToastAction,
-    TransactionToastIcon,
-    TransactionToastLabel,
-    TransactionError,
-    TransactionResponse,
-    TransactionStatusAction,
-    TransactionStatusLabel,
-    TransactionStatus,
+  TransactionButton,
+  TransactionToast,
+  TransactionToastAction,
+  TransactionToastIcon,
+  TransactionToastLabel,
+  TransactionError,
+  TransactionResponse,
+  TransactionStatusAction,
+  TransactionStatusLabel,
+  TransactionStatus,
 } from "@coinbase/onchainkit/transaction";
 import { useNotification } from "@coinbase/onchainkit/minikit";
 
@@ -23,23 +24,39 @@ import { useNotification } from "@coinbase/onchainkit/minikit";
 const GAME_WALLET = process.env.NEXT_PUBLIC_GAME_WALLET || "0x1234567890123456789012345678901234567890";
 
 export function PaymentInterface() {
-    // Mock address
-    const address = useAccount();
+  const { address } = useAccount();
+  const { 
+    betChoice, 
+    error, 
+    recordPayment, 
+    cancelJoining,
+    loading
+  } = useGame();
 
-    const { betChoice, error } = useGame();
+  const sendNotification = useNotification();
 
-    const sendNotification = useNotification();
+  const handleSuccess = useCallback(async(response: TransactionResponse) => {
+    const transactionHash = response.transactionReceipts[0].transactionHash;
+    
+    console.log("Transaction Hash:", transactionHash);
 
-    const handleSuccess = useCallback(async(response: TransactionResponse) => {
-      const transactionHash = response.transactionReceipts[0].transactionHash;
-      
-      console.log("Transaction Hash:", transactionHash);
+    // Record both the bet and payment
+    await recordPayment(transactionHash);
 
-      await sendNotification({
-        title: 'Transaction Successful',
-        body: `You send your transaction: ${transactionHash}`,
-      });
-    },[sendNotification]);
+    // Send a notification to the user
+    await sendNotification({
+      title: 'Bet Placed Successfully',
+      body: `Your bet has been placed and payment received. Good luck!`,
+    });
+  }, [recordPayment, sendNotification]);
+
+  const handleCancel = useCallback(async() => {
+    if (loading) return;
+    
+    if (confirm("Are you sure you want to cancel? Your game entry will be removed.")) {
+      await cancelJoining();
+    }
+  }, [cancelJoining, loading]);
 
   // Create transaction params for 0.5 USDC
   const generateTransactionCalls = () => {
@@ -101,7 +118,7 @@ export function PaymentInterface() {
           </div>
         )}
         
-        <div className="pt-2">
+        <div className="pt-2 space-y-2">
           {address ? (
             <Transaction
               calls={calls}
@@ -126,6 +143,15 @@ export function PaymentInterface() {
               Connect Wallet First
             </Button>
           )}
+          
+          <Button 
+            variant="outline" 
+            className="w-full" 
+            onClick={handleCancel}
+            disabled={loading}
+          >
+            Cancel and Exit
+          </Button>
         </div>
       </div>
     </Card>

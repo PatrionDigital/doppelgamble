@@ -1,3 +1,4 @@
+// app/components/game/BettingInterface.tsx - Add cancel functionality
 "use client";
 
 import React from "react";
@@ -11,8 +12,18 @@ export function BettingInterface() {
     betChoice, 
     setBetChoice, 
     placeBet, 
-    error 
+    cancelJoining,
+    error,
+    loading
   } = useGame();
+
+  const handleCancel = async () => {
+    if (loading) return;
+    
+    if (confirm("Are you sure you want to cancel? Your game entry will be removed.")) {
+      await cancelJoining();
+    }
+  };
 
   return (
     <Card title="Place Your Bet">
@@ -83,13 +94,27 @@ export function BettingInterface() {
           </div>
         )}
         
-        <div className="pt-2">
+        <div className="pt-2 space-y-2">
           <Button 
             onClick={placeBet} 
             className="w-full"
-            disabled={!betChoice}
+            disabled={!betChoice || loading}
           >
-            Confirm Bet
+            {loading ? (
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Processing...
+              </div>
+            ) : "Confirm Bet"}
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            className="w-full" 
+            onClick={handleCancel}
+            disabled={loading}
+          >
+            Cancel and Exit
           </Button>
         </div>
       </div>

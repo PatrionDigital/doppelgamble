@@ -137,6 +137,47 @@ export async function addPlayerToGame(
   };
 }
 
+// Remove a player from a game
+export async function removePlayer(playerId: string): Promise<void> {
+  try {
+    await client.execute({
+      sql: 'DELETE FROM players WHERE id = ?',
+      args: [playerId]
+    });
+    console.log(`Player ${playerId} removed from game`);
+  } catch (error) {
+    console.error("Failed to remove player:", error);
+    throw error;
+  }
+}
+// Check if a player is in any active game
+export async function isPlayerInActiveGame(fid: number): Promise<{isActive: boolean, gameId?: string}> {
+  try {
+    const result = await client.execute({
+      sql: `
+        SELECT g.id, g.status
+        FROM games g
+        JOIN players p ON g.id = p.game_id
+        WHERE p.fid = ? AND (g.status = ? OR g.status = ?)
+        LIMIT 1
+      `,
+      args: [fid, GameStatus.OPEN, GameStatus.FULL]
+    });
+    
+    if (result.rows.length === 0) {
+      return { isActive: false };
+    }
+    
+    const row = result.rows[0];
+    return { 
+      isActive: true, 
+      gameId: String(row.id) 
+    };
+  } catch (error) {
+    console.error("Failed to check if player is in active game:", error);
+    throw error;
+  }
+}
 // Record player bet
 export async function recordPlayerBet(
   playerId: string,
