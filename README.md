@@ -5,7 +5,7 @@ A birthday paradox betting game built with MiniKit for Farcaster. Test the birth
 ## How It Works
 
 1. **Join a Game**: Enter a game with up to 23 Farcaster users
-2. **Place Your Bet**: Bet 0.5 USDC on whether anyone will share your Farcaster birthday
+2. **Place Your Bet**: Bet on whether anyone will share your Farcaster birthday
 3. **Wait for Results**: Once the game is full, the results are calculated
 4. **Collect Winnings**: Winners split the pot!
 
@@ -14,6 +14,10 @@ A birthday paradox betting game built with MiniKit for Farcaster. Test the birth
 The birthday paradox states that in a group of just 23 randomly chosen people, there's a 50% chance that at least two people share the same birthday. This counterintuitive probability demonstrates how quickly collision probabilities grow in small sample sizes.
 
 In DoppelGamble, we use Farcaster registration dates ("Farcaster birthdays") to test this mathematical phenomenon with real data.
+
+## Beta Testing Mode
+
+During the beta testing period, all games are free to play! Set the `NEXT_PUBLIC_BET_AMOUNT` environment variable to "0" to enable beta mode. In production, you can set this to your desired bet amount (e.g., "0.5" for 0.5 USDC).
 
 ## Tech Stack
 
@@ -55,9 +59,10 @@ cp .env.example .env.local
 
 Required environment variables:
 
+- MiniKit configuration variables
 - TursoDB credentials
 - Farcaster Frame configuration
-- Game wallet address
+- Game settings (including `NEXT_PUBLIC_BET_AMOUNT` for beta mode)
 - Security keys
 
 4. Start the development server
