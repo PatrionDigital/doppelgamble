@@ -342,11 +342,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
 
+    console.log("Starting payment recording process");
+    console.log("Current player:", currentPlayer);
+    console.log("Bet choice:", betChoice);
+
     try {
       // First record the bet
       console.log("Recording bet with params:", {
         playerId: currentPlayer.id,
         bet: betChoice,
+        betAmount: process.env.NEXT_PUBLIC_BET_AMOUNT || "0"
       });
       
       const betResponse = await fetch("/api/bet", {
@@ -357,6 +362,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({
           playerId: currentPlayer.id,
           bet: betChoice,
+          betAmount: process.env.NEXT_PUBLIC_BET_AMOUNT || "0"
         }),
       });
 
@@ -373,6 +379,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       console.log("Recording payment with params:", {
         playerId: currentPlayer.id,
         transactionHash,
+        betAmount: process.env.NEXT_PUBLIC_BET_AMOUNT || "0"
       });
       
       const paymentResponse = await fetch("/api/payment", {
@@ -383,6 +390,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({
           playerId: currentPlayer.id,
           transactionHash,
+          betAmount: process.env.NEXT_PUBLIC_BET_AMOUNT || "0"
         }),
       });
 
@@ -400,13 +408,22 @@ export function GameProvider({ children }: { children: ReactNode }) {
       
       // Refresh game status
       await refreshGameStatus();
+      console.log("Game status refreshed after payment");
+
+      if (currentPlayer){
+        setCurrentPlayer({
+          ...currentPlayer,
+          bet: betChoice,
+          paid: true
+        });
+      }
     } catch (error) {
       console.error("Error recording payment:", error);
       setError(error instanceof Error ? error.message : "Failed to record payment. Please try again.");
     } finally {
       setLoading(false);
     }
-  }, [currentPlayer, betChoice, refreshGameStatus]);
+  }, [currentPlayer, betChoice, refreshGameStatus, setCurrentPlayer]);
 
   // Initialize Farcaster user data
   useEffect(() => {

@@ -1,7 +1,7 @@
-// app/components/game/PaymentInterface.tsx - Updated for beta with $0 bets
+// app/components/game/PaymentInterface.tsx - Updated with state management
 "use client";
 
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import { useGame } from "../../context/GameContext";
 import { Card, Button, Icon } from "../ui/GameUI";
 import { useAccount, useChainId } from "wagmi";
@@ -33,8 +33,14 @@ export function PaymentInterface() {
     error, 
     recordPayment, 
     cancelJoining,
-    loading
+    loading,
+    refreshGameStatus,
+    paymentCompleted,
+    //setPaymentCompleted
   } = useGame();
+
+  // Add local loading state to handle UI feedback during transitions
+  const [localLoading, setLocalLoading] = useState(false);
 
   const sendNotification = useNotification();
 
@@ -45,30 +51,58 @@ export function PaymentInterface() {
       console.log("Transaction successful! Hash:", transactionHash);
       console.log("Full response:", response);
 
+      // Show a loading indicator
+      setLocalLoading(true);
+
       // Record both the bet and payment
+      console.log("Recording payment with bet:", betChoice);
       await recordPayment(transactionHash);
+      console.log("Payment recorded successfully");
 
       // Send a notification to the user
       await sendNotification({
         title: isBetaMode ? '[BETA] Bet Placed Successfully':'Bet Placed Successfully',
-        body: isBetaMode ? `Your free beta bet has been placed and payment received. Good luck!`:`Your bet has been placed and payment received. Good luck!`,
+        body: isBetaMode ? 
+          `Your free beta bet of "${betChoice === 'yes' ? 'YES' : 'NO'}" has been placed and payment received. Good luck!` :
+          `Your bet of "${betChoice === 'yes' ? 'YES' : 'NO'}" has been placed and payment received. Good luck!`,
       });
+      
+      // Force refresh game state after a short delay
+      setTimeout(async () => {
+        console.log("Forcing game state refresh");
+        await refreshGameStatus();
+        setLocalLoading(false);
+      }, 1000);
     } catch (error) {
       console.error("Error processing successful transaction:", error);
+      setLocalLoading(false);
     }
-  }, [recordPayment, sendNotification]);
+  }, [recordPayment, sendNotification, betChoice, refreshGameStatus]);
 
   const handleError = useCallback((error: TransactionError) => {
     console.error("Transaction failed:", error);
   }, []);
 
   const handleCancel = useCallback(async() => {
-    if (loading) return;
+    if (loading || localLoading) return;
     
     if (confirm("Are you sure you want to cancel? Your game entry will be removed.")) {
       await cancelJoining();
     }
-  }, [cancelJoining, loading]);
+  }, [cancelJoining, loading, localLoading]);
+
+  // Function to manually proceed to waiting room
+  const handleProceedToWaiting = async () => {
+    setLocalLoading(true);
+    try {
+      console.log("Manually proceeding to waiting room");
+      await refreshGameStatus();
+    } catch (error) {
+      console.error("Error transitioning to waiting room:", error);
+    } finally {
+      setLocalLoading(false);
+    }
+  };
 
   // Create transaction params for a zero-value transaction to self
   const calls = React.useMemo(() => {
@@ -145,41 +179,77 @@ export function PaymentInterface() {
           </div>
         )}
         
+        {/* Show loading overlay during state transition */}
+        {localLoading && (
+          <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-lg text-sm flex items-center">
+            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Processing your bet... Please wait
+          </div>
+        )}
+        
         <div className="pt-2 space-y-2">
-          {address ? (
-            <div className="flex flex-col items-center w-full">
-              <Transaction
-                calls={calls}
-                onSuccess={handleSuccess}
-                onError={handleError}
-              >
-                {isBetaMode ? "Confirm Free Bet" : `Pay ${betAmount} USDC & Place Bet`}
-                <TransactionButton className="w-full py-2 bg-[var(--app-accent)] text-white rounded-lg hover:bg-[var(--app-accent-hover)]"/>
-                <TransactionStatus>
-                  <TransactionStatusAction />
-                  <TransactionStatusLabel />
-                </TransactionStatus>
-                <TransactionToast className="mb-4">
-                  <TransactionToastIcon />
-                  <TransactionToastLabel />
-                  <TransactionToastAction />
-                </TransactionToast>
-              </Transaction>
-            </div>
+          {!paymentCompleted ? (
+            address ? (
+              <div className="flex flex-col items-center w-full">
+                <Transaction
+                  calls={calls}
+                  onSuccess={handleSuccess}
+                  onError={handleError}
+                >
+                  <TransactionButton className="w-full py-2 bg-[var(--app-accent)] text-white rounded-lg hover:bg-[var(--app-accent-hover)]"/>
+                  <TransactionStatus>
+                    <TransactionStatusAction />
+                    <TransactionStatusLabel />
+                  </TransactionStatus>
+                  <TransactionToast className="mb-4">
+                    <TransactionToastIcon />
+                    <TransactionToastLabel />
+                    <TransactionToastAction />
+                  </TransactionToast>
+                </Transaction>
+              </div>
+            ) : (
+              <Button className="w-full" disabled>
+                Connect Wallet First
+              </Button>
+            )
           ) : (
-            <Button className="w-full" disabled>
-              Connect Wallet First
-            </Button>
+            // Show this after payment is completed
+            <div className="mt-4">
+              <div className="p-3 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded-lg text-sm mb-3">
+                <div className="flex items-center">
+                  <Icon name="check" className="text-green-500 mr-2" />
+                  <span>Payment recorded successfully!</span>
+                </div>
+              </div>
+              <Button 
+                className="w-full" 
+                onClick={handleProceedToWaiting}
+                disabled={localLoading}
+              >
+                {localLoading ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Processing...
+                  </div>
+                ) : "Continue to Waiting Room"}
+              </Button>
+            </div>
           )}
           
-          <Button 
-            variant="outline" 
-            className="w-full" 
-            onClick={handleCancel}
-            disabled={loading}
-          >
-            Cancel and Exit
-          </Button>
+          {!paymentCompleted && (
+            <Button 
+              variant="outline" 
+              className="w-full" 
+              onClick={handleCancel}
+              disabled={loading || localLoading}
+            >
+              Cancel and Exit
+            </Button>
+          )}
         </div>
       </div>
     </Card>
