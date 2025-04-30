@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     console.log("Bet request body:", body);
     
-    const { playerId, bet } = body;
+    const { playerId, bet, betAmount } = body;
     
     if (!playerId || !bet) {
       console.log("Missing required fields:", { playerId, bet });
@@ -31,6 +31,7 @@ export async function POST(request: Request) {
     
     // Record the bet
     try {
+      console.log(`REcording bet for player ${playerId}: ${bet} (Amount: ${betAmount || '0'})`);
       await db.recordPlayerBet(playerId, bet);
       console.log("Bet recorded successfully for player:", playerId);
     } catch (dbError) {

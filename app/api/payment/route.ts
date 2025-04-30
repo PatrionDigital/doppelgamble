@@ -9,7 +9,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     console.log("Payment request body:", body);
     
-    const { playerId, transactionHash } = body;
+    const { playerId, transactionHash, betAmount } = body;
     
     if (!playerId || !transactionHash) {
       console.log("Missing required fields:", { playerId, transactionHash });
@@ -18,6 +18,8 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    console.log(`Processing payment for player ${playerId} with bet amount: ${betAmount || '0'}`);
     
     // Mark player as paid
     try {
@@ -35,7 +37,7 @@ export async function POST(request: Request) {
     }
     
     // Log the transaction for verification
-    console.log(`Payment recorded: Player ${playerId}, Transaction: ${transactionHash}`);
+    console.log(`Payment recorded: Player ${playerId}, Transaction: ${transactionHash}, Amount: ${betAmount || '0'} USDC`);
     
     return NextResponse.json({
       success: true,
