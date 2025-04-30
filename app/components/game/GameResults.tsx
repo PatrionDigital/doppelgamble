@@ -2,16 +2,16 @@
 
 import React from "react";
 import { useGame } from "../../context/GameContext";
-//import { useViewProfile } from "@coinbase/onchainkit/minikit"; // mock until we can fix the import
 import { Card, Button, Icon } from "../ui/GameUI";
 import { BetType } from "@/lib/db-types";
+import { useViewProfile } from "@coinbase/onchainkit/minikit";
+
+// Determine if we're in beta mode
+const isBetaMode = process.env.NEXT_PUBLIC_BET_AMOUNT === "0";
 
 export function GameResults() {
   const { currentGame, currentPlayer, allPlayers } = useGame();
-  //const viewProfile = useViewProfile();
-  const viewProfile = () => {
-    console.log("View profile clicked");
-  };
+  const viewProfile = useViewProfile();
   
   // Check if current player won
   const isWinner = currentPlayer?.bet === currentGame?.winningBet;
@@ -30,9 +30,28 @@ export function GameResults() {
     .filter(([, fids]) => fids.length > 1)
     .map(([birthday, fids]) => ({ birthday, fids }));
 
+  // Handle viewing a player's profile
+  const handleViewProfile = (fid: number) => {
+    if (typeof viewProfile === 'function') {
+      viewProfile(fid);
+    }
+  };
+
   return (
     <Card title="Game Results">
       <div className="space-y-5">
+        {/* Beta Mode Banner */}
+        {isBetaMode && (
+          <div className="bg-green-100 dark:bg-green-900/30 p-3 rounded-lg border border-green-500">
+            <div className="flex items-center">
+              <Icon name="info" className="text-green-500 mr-2 flex-shrink-0" />
+              <p className="text-sm text-green-800 dark:text-green-200">
+                <span className="font-bold">BETA MODE:</span> This was a free game during our beta testing period.
+              </p>
+            </div>
+          </div>
+        )}
+        
         {/* Result Banner */}
         <div className={`p-5 rounded-lg ${
           isWinner 
@@ -51,7 +70,7 @@ export function GameResults() {
           
           <p className={isWinner ? "text-green-800 dark:text-green-200" : "text-red-800 dark:text-red-200"}>
             {isWinner
-              ? `You bet "${currentPlayer?.bet}" and won! Your payout is ${currentPlayer?.payout?.toFixed(2)} USDC.`
+              ? `You bet "${currentPlayer?.bet}" and won! ${!isBetaMode && currentPlayer?.payout ? `Your payout is ${currentPlayer?.payout?.toFixed(2)} USDC.` : ""}`
               : `You bet "${currentPlayer?.bet}" but the winning bet was "${currentGame?.winningBet}".`
             }
           </p>
@@ -79,7 +98,7 @@ export function GameResults() {
               </span>
             </div>
             
-            {currentPlayer?.payout && (
+            {!isBetaMode && currentPlayer?.payout && (
               <div className="flex justify-between">
                 <span className="text-[var(--app-foreground-muted)]">Your Payout:</span>
                 <span className="font-bold">{currentPlayer.payout.toFixed(2)} USDC</span>
@@ -112,7 +131,11 @@ export function GameResults() {
                     
                     <div className="text-sm text-[var(--app-foreground-muted)]">
                       {fids.map((fid, index) => (
-                        <span key={fid} className="cursor-pointer hover:underline" onClick={() => viewProfile()}>
+                        <span 
+                          key={fid} 
+                          className="cursor-pointer hover:underline" 
+                          onClick={() => handleViewProfile(fid)}
+                        >
                           FID: {fid}{index < fids.length - 1 ? ", " : ""}
                         </span>
                       ))}
@@ -124,8 +147,8 @@ export function GameResults() {
           </div>
         )}
         
-        {/* New Game Button */}
-        <Button className="w-full mt-4" onClick={() => window.location.reload()}>
+        {/* Share Results Button */}
+        <Button className="w-full" onClick={() => window.location.reload()}>
           Play a New Game
         </Button>
       </div>

@@ -1,10 +1,10 @@
-// app/components/game/PaymentInterface.tsx - Network-agnostic implementation
+// app/components/game/PaymentInterface.tsx - Updated for beta with $0 bets
 "use client";
 
 import React, { useCallback } from "react";
 import { useGame } from "../../context/GameContext";
 import { Card, Button, Icon } from "../ui/GameUI";
-import { useAccount, useChainId } from "wagmi"; // Added useChainId
+import { useAccount, useChainId } from "wagmi";
 import { 
   Transaction,
   TransactionButton,
@@ -20,9 +20,13 @@ import {
 } from "@coinbase/onchainkit/transaction";
 import { useNotification } from "@coinbase/onchainkit/minikit";
 
+// Get bet amount from environment variables, default to 0 for beta
+const betAmount = process.env.NEXT_PUBLIC_BET_AMOUNT || "0";
+const isBetaMode = betAmount === "0";
+
 export function PaymentInterface() {
   const { address } = useAccount();
-  const chainId = useChainId(); // Get the current chain ID
+  const chainId = useChainId();
   
   const { 
     betChoice, 
@@ -66,7 +70,7 @@ export function PaymentInterface() {
     }
   }, [cancelJoining, loading]);
 
-  // Create transaction params for a zero-value transaction to self (like in the example)
+  // Create transaction params for a zero-value transaction to self
   const calls = React.useMemo(() => {
     if (!address) return [];
     
@@ -74,9 +78,9 @@ export function PaymentInterface() {
     
     return [
       {
-        to: address, // Send to self, just like in the example
+        to: address, // Send to self
         data: "0x" as `0x${string}`,
-        value: BigInt(0), // Zero-value transaction
+        value: BigInt(0), // Always zero-value transaction for now
       },
     ];
   }, [address, chainId]);
@@ -108,16 +112,28 @@ export function PaymentInterface() {
           </div>
           
           <div className="flex justify-between items-center">
-            <span className="font-medium">Test Transaction:</span>
+            <span className="font-medium">Transaction:</span>
             <span className="font-bold">0 ETH ({networkName})</span>
           </div>
         </div>
+        
+        {isBetaMode && (
+          <div className="bg-green-100 dark:bg-green-900/30 p-4 rounded-lg border border-green-500">
+            <div className="flex items-start">
+              <Icon name="info" className="text-green-500 mt-1 mr-3 flex-shrink-0" />
+              <p className="text-sm text-green-800 dark:text-green-200">
+                <span className="font-bold">BETA MODE:</span> During the beta testing period, 
+                all bets are free! You&apos;ll only need to confirm a zero-value transaction to place your bet.
+              </p>
+            </div>
+          </div>
+        )}
         
         <div className="bg-[var(--app-accent-light)] p-4 rounded-lg border border-[var(--app-accent)]">
           <div className="flex items-start">
             <Icon name="info" className="text-[var(--app-accent)] mt-1 mr-3 flex-shrink-0" />
             <p className="text-sm">
-              This is a test transaction that will send 0 ETH to your own wallet. 
+              This will send a {isBetaMode ? "free zero-value" : betAmount + " USDC"} transaction. 
               You&apos;re betting that {betChoice === "yes" ? "someone" : "no one"} in the game shares your Farcaster birthday.
             </p>
           </div>
@@ -137,7 +153,8 @@ export function PaymentInterface() {
                 onSuccess={handleSuccess}
                 onError={handleError}
               >
-                <TransactionButton className="w-full py-2 bg-[var(--app-accent)] text-white rounded-lg hover:bg-[var(--app-accent-hover)]" />
+                {isBetaMode ? "Confirm Free Bet" : `Pay ${betAmount} USDC & Place Bet`}
+                <TransactionButton className="w-full py-2 bg-[var(--app-accent)] text-white rounded-lg hover:bg-[var(--app-accent-hover)]"/>
                 <TransactionStatus>
                   <TransactionStatusAction />
                   <TransactionStatusLabel />
