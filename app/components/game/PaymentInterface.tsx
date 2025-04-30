@@ -30,17 +30,20 @@ export function PaymentInterface() {
   
   const { 
     betChoice, 
-    error, 
+    error,
     recordPayment, 
     cancelJoining,
-    loading,
+    loading: gameLoading,
     refreshGameStatus,
+    //currentPlayer,
     paymentCompleted,
-    //setPaymentCompleted
+    setPaymentCompleted
   } = useGame();
 
   // Add local loading state to handle UI feedback during transitions
   const [localLoading, setLocalLoading] = useState(false);
+  const [transactionError, setTransactionError] = useState<string | null>(null);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   const sendNotification = useNotification();
 
@@ -60,36 +63,52 @@ export function PaymentInterface() {
       console.log("Payment recorded successfully");
 
       // Send a notification to the user
-      await sendNotification({
-        title: isBetaMode ? '[BETA] Bet Placed Successfully':'Bet Placed Successfully',
-        body: isBetaMode ? 
-          `Your free beta bet of "${betChoice === 'yes' ? 'YES' : 'NO'}" has been placed and payment received. Good luck!` :
-          `Your bet of "${betChoice === 'yes' ? 'YES' : 'NO'}" has been placed and payment received. Good luck!`,
-      });
-      
-      // Force refresh game state after a short delay
-      setTimeout(async () => {
-        console.log("Forcing game state refresh");
-        await refreshGameStatus();
-        setLocalLoading(false);
-      }, 1000);
+      try {
+        await sendNotification({
+          title: isBetaMode ? '[BETA] Bet Placed Successfully':'Bet Placed Successfully',
+          body: isBetaMode ? 
+            `Your free beta bet of "${betChoice === 'yes' ? 'YES' : 'NO'}" has been placed and payment received. Good luck!` :
+            `Your bet of "${betChoice === 'yes' ? 'YES' : 'NO'}" has been placed and payment received. Good luck!`,
+        });
+      } catch (notifyError){
+        console.error("Notification error:", notifyError);
+      }
+
+      // update local state
+      setPaymentCompleted(true);
+
+      await refreshGameStatus();
+      console.log("Game status refreshed after payment");
     } catch (error) {
       console.error("Error processing successful transaction:", error);
       setLocalLoading(false);
     }
-  }, [recordPayment, sendNotification, betChoice, refreshGameStatus]);
+  }, [betChoice, recordPayment, setPaymentCompleted, sendNotification, refreshGameStatus]);
 
   const handleError = useCallback((error: TransactionError) => {
     console.error("Transaction failed:", error);
   }, []);
 
   const handleCancel = useCallback(async() => {
-    if (loading || localLoading) return;
+    if (gameLoading || localLoading) return;
     
     if (confirm("Are you sure you want to cancel? Your game entry will be removed.")) {
       await cancelJoining();
     }
-  }, [cancelJoining, loading, localLoading]);
+  }, [cancelJoining, gameLoading, localLoading]);
+
+  const confirmCancel = async() =>{
+    setLocalLoading(true);
+    try {
+      await cancelJoining();
+    } catch (error){
+      console.error("Error cancelling:", error);
+      setTransactionError("Failed to cancel, please try again.");
+    } finally{
+      setLocalLoading(false);
+      setShowCancelConfirm(false);
+    }
+  }
 
   // Function to manually proceed to waiting room
   const handleProceedToWaiting = async () => {
@@ -99,6 +118,7 @@ export function PaymentInterface() {
       await refreshGameStatus();
     } catch (error) {
       console.error("Error transitioning to waiting room:", error);
+      setTransactionError("Failed to update game status. Please try again.");
     } finally {
       setLocalLoading(false);
     }
@@ -173,9 +193,9 @@ export function PaymentInterface() {
           </div>
         </div>
         
-        {error && (
+        {error || transactionError && (
           <div className="p-3 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-lg text-sm">
-            {error}
+            {error || transactionError}
           </div>
         )}
         
@@ -187,6 +207,30 @@ export function PaymentInterface() {
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
             Processing your bet... Please wait
+          </div>
+        )}
+
+        {/* Cancel confirmation dialog */}
+        {showCancelConfirm && (
+          <div className="p-3 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 rounded-lg text-sm">
+            <p className="mb-2">Are you sure you want to cancel? Your game entry will be removed.</p>
+            <div className="flex space-x-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowCancelConfirm(false)}
+              >
+                No, Keep My Bet
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={confirmCancel}
+                className="!bg-red-100 !text-red-800 dark:!bg-red-900/30 dark:!text-red-200 !border-red-300"
+              >
+                Yes, Cancel
+              </Button>
+            </div>
           </div>
         )}
         
@@ -245,7 +289,7 @@ export function PaymentInterface() {
               variant="outline" 
               className="w-full" 
               onClick={handleCancel}
-              disabled={loading || localLoading}
+              disabled={gameLoading || localLoading}
             >
               Cancel and Exit
             </Button>
