@@ -34,6 +34,16 @@ export async function sendFrameNotification({
     return { state: "no_token" };
   }
 
+  // For beta mode, add a beta tag to the notification title if applicable
+  const isBetaMode = process.env.NEXT_PUBLIC_BET_AMOUNT === "0";
+  const betaTitle = isBetaMode ? `[BETA] ${title}` : title;
+  
+  // For development environments, just log and return success
+  if (process.env.NODE_ENV === "development" && !process.env.UPSTASH_REDIS_REST_URL) {
+    console.log(`[DEV] Would send notification to FID ${fid}: ${betaTitle} - ${body}`);
+    return { state: "success" };
+  }
+
   const response = await fetch(notificationDetails.url, {
     method: "POST",
     headers: {
@@ -41,7 +51,7 @@ export async function sendFrameNotification({
     },
     body: JSON.stringify({
       notificationId: crypto.randomUUID(),
-      title,
+      title: betaTitle,
       body,
       targetUrl: appUrl,
       tokens: [notificationDetails.token],

@@ -150,6 +150,7 @@ export async function removePlayer(playerId: string): Promise<void> {
     throw error;
   }
 }
+
 // Check if a player is in any active game
 export async function isPlayerInActiveGame(fid: number): Promise<{isActive: boolean, gameId?: string}> {
   try {
@@ -178,6 +179,7 @@ export async function isPlayerInActiveGame(fid: number): Promise<{isActive: bool
     throw error;
   }
 }
+
 // Record player bet
 export async function recordPlayerBet(
   playerId: string,
@@ -329,9 +331,12 @@ export async function resolveGame(
     return; // No winners
   }
   
+  // Get bet amount from env var (or use default)
+  const betAmount = parseFloat(process.env.NEXT_PUBLIC_BET_AMOUNT || "0.5");
+  
   // Calculate payout per winner
-  // Total pot: 23 players × 0.5 USDC = 11.5 USDC
-  const totalPot = 11.5;
+  // Total pot: 23 players × bet amount
+  const totalPot = 23 * betAmount;
   const payoutPerWinner = totalPot / winners.length;
   
   // Update payouts for winners
@@ -342,3 +347,5 @@ export async function resolveGame(
     });
   }
 }
+
+export default client;

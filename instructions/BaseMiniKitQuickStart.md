@@ -317,3 +317,7 @@ Notice that we first check if the user has added the frame to their list of mini
 ### Conclusion
 
 Congratulations, you've created your first mini app, set up the manifest, added key MiniKit hooks, and sent your users a notification! We're excited to see what you build with MiniKit!
+
+## Points to be Careful Of
+
+- `<TransactionButton>` can not have child elements, so it must look like this: `<TransactionButton className="w-full py-2 bg-[var(--app-accent)] text-white rounded-lg hover:bg-[var(--app-accent-hover)]"/>`
