@@ -50,8 +50,8 @@ export function PaymentInterface() {
 
       // Send a notification to the user
       await sendNotification({
-        title: 'Bet Placed Successfully',
-        body: `Your bet has been placed and payment received. Good luck!`,
+        title: isBetaMode ? '[BETA] Bet Placed Successfully':'Bet Placed Successfully',
+        body: isBetaMode ? `Your free beta bet has been placed and payment received. Good luck!`:`Your bet has been placed and payment received. Good luck!`,
       });
     } catch (error) {
       console.error("Error processing successful transaction:", error);

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useGame } from "../../context/GameContext";
 import { Card, ProgressBar, Icon, Button } from "../ui/GameUI";
 import { useNotification } from "@coinbase/onchainkit/minikit";
@@ -11,31 +11,31 @@ export function WaitingRoom() {
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
-  // Calculate dynamic refresh interval based on game progress
-  const getRefreshInterval = () => {
-    if (totalPlayers >= 22) return 3000;  // Almost full: every 3 seconds
-    if (totalPlayers >= 20) return 5000;  // Very close: every 5 seconds
-    if (totalPlayers >= 15) return 10000; // Getting there: every 10 seconds
-    return 20000;                         // Just waiting: every 20 seconds
-  };
+// Calculate dynamic refresh interval based on game progress
+const getRefreshInterval = useCallback(() => {
+  if (totalPlayers >= 22) return 3000;  // Almost full: every 3 seconds
+  if (totalPlayers >= 20) return 5000;  // Very close: every 5 seconds
+  if (totalPlayers >= 15) return 10000; // Getting there: every 10 seconds
+  return 20000;                         // Just waiting: every 20 seconds
+}, [totalPlayers]);
 
-  // Auto-refresh game status with dynamic intervals
-  useEffect(() => {
-    if (!currentGame?.id) return;
-    
-    const interval = setInterval(() => {
-      if (!isRefreshing) {
-        setIsRefreshing(true);
-        refreshGameStatus()
-          .finally(() => {
-            setLastRefresh(new Date());
-            setIsRefreshing(false);
-          });
-      }
-    }, getRefreshInterval());
-    
-    return () => clearInterval(interval);
-  }, [currentGame?.id, totalPlayers, refreshGameStatus, isRefreshing]);
+// Auto-refresh game status with dynamic intervals
+useEffect(() => {
+  if (!currentGame?.id) return;
+  
+  const interval = setInterval(() => {
+    if (!isRefreshing) {
+      setIsRefreshing(true);
+      refreshGameStatus()
+        .finally(() => {
+          setLastRefresh(new Date());
+          setIsRefreshing(false);
+        });
+    }
+  }, getRefreshInterval());
+  
+  return () => clearInterval(interval);
+}, [currentGame?.id, refreshGameStatus, isRefreshing, getRefreshInterval]);
 
   // Manual refresh handler
   const handleManualRefresh = async () => {
