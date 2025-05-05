@@ -58,11 +58,12 @@ export function PaymentInterface() {
       recordPayment("beta-mode-no-tx")
         .then(() => {
           setPaymentCompleted(true);
-          sendNotification &&
+          if (sendNotification) {
             sendNotification({
               title: '[BETA] Bet Placed Successfully',
               body: `Your free beta bet of "${betChoice === 'yes' ? 'YES' : 'NO'}" has been placed. Good luck!`,
             });
+          }
         })
         .catch((error) => {
           setTransactionError(
@@ -73,7 +74,7 @@ export function PaymentInterface() {
           setLocalLoading(false);
         });
     }
-  }, [isBetaMode, paymentCompleted, currentPlayer, localLoading, recordPayment, setPaymentCompleted, sendNotification, betChoice]);
+  }, [paymentCompleted, currentPlayer, localLoading, recordPayment, setPaymentCompleted, sendNotification, betChoice]);
 
   const handleSuccess = useCallback(async (response: TransactionResponse) => {
     try {
@@ -81,19 +82,20 @@ export function PaymentInterface() {
       setLocalLoading(true);
       await recordPayment(transactionHash);
       setPaymentCompleted(true);
-      sendNotification &&
+      if (sendNotification) {
         sendNotification({
           title: isBetaMode ? '[BETA] Bet Placed Successfully' : 'Bet Placed Successfully',
           body: isBetaMode
             ? `Your free beta bet of "${betChoice === 'yes' ? 'YES' : 'NO'}" has been placed. Good luck!`
             : `Your bet of "${betChoice === 'yes' ? 'YES' : 'NO'}" has been placed. Good luck!`,
         });
+      }
     } catch (error) {
       setTransactionError(error instanceof Error ? error.message : "Failed to process transaction");
     } finally {
       setLocalLoading(false);
     }
-  }, [betChoice, isBetaMode, recordPayment, sendNotification, setPaymentCompleted]);
+  }, [betChoice, recordPayment, sendNotification, setPaymentCompleted]);
 
   const handleError = useCallback((error: TransactionError) => {
     setTransactionError(error instanceof Error ? error.message : "Transaction failed. Please try again.");
@@ -108,7 +110,7 @@ export function PaymentInterface() {
     setLocalLoading(true);
     try {
       await cancelJoining();
-    } catch (error) {
+    } catch {
       setTransactionError("Failed to cancel. Please try again.");
     } finally {
       setLocalLoading(false);
@@ -120,7 +122,7 @@ export function PaymentInterface() {
     setLocalLoading(true);
     try {
       await refreshGameStatus();
-    } catch (error) {
+    } catch {
       setTransactionError("Failed to update game status. Please try again.");
     } finally {
       setLocalLoading(false);
