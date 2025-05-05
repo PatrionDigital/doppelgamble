@@ -1,7 +1,7 @@
 // app/components/game/PaymentInterface.tsx
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useGame } from "../../context/GameContext";
 import { Card, Button, Icon } from "../ui/GameUI";
 import { useAccount, useChainId } from "wagmi";
@@ -46,6 +46,75 @@ export function PaymentInterface() {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   const sendNotification = useNotification();
+
+  // If in beta mode, skip transaction UI and logic, directly record payment
+  if (isBetaMode) {
+    // If payment is not completed, record it immediately
+    useEffect(() => {
+      if (!paymentCompleted && currentPlayer && !localLoading) {
+        setLocalLoading(true);
+        recordPayment("beta-mode-no-tx").then(() => {
+          setPaymentCompleted(true);
+          sendNotification && sendNotification({
+            title: '[BETA] Bet Placed Successfully',
+            body: `Your free beta bet of \"${betChoice === 'yes' ? 'YES' : 'NO'}\" has been placed. Good luck!`,
+          });
+        }).catch((error) => {
+          setTransactionError(error instanceof Error ? error.message : "Failed to record payment.");
+        }).finally(() => {
+          setLocalLoading(false);
+        });
+      }
+    }, [paymentCompleted, currentPlayer, localLoading, recordPayment, setPaymentCompleted, sendNotification, betChoice]);
+
+    return (
+      <Card title="Bet Confirmation">
+        <div className="space-y-4">
+          <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-lg text-sm flex items-center">
+            <Icon name="check" className="text-blue-500 mr-2" />
+            Processing your bet... Please wait
+          </div>
+          {transactionError && (
+            <div className="p-3 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-lg text-sm">
+              {transactionError}
+            </div>
+          )}
+          {paymentCompleted && (
+            <div className="mt-4">
+              <div className="p-3 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded-lg text-sm mb-3">
+                <div className="flex items-center">
+                  <Icon name="check" className="text-green-500 mr-2" />
+                  <span>Bet recorded successfully! (No transaction required in beta)</span>
+                </div>
+              </div>
+              <Button 
+                className="w-full" 
+                onClick={async () => { await refreshGameStatus(); }}
+                disabled={localLoading}
+              >
+                {localLoading ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Processing...
+                  </div>
+                ) : "Continue to Waiting Room"}
+              </Button>
+            </div>
+          )}
+          {!paymentCompleted && (
+            <Button 
+              variant="outline" 
+              className="w-full" 
+              onClick={cancelJoining}
+              disabled={loading || localLoading}
+            >
+              Cancel and Exit
+            </Button>
+          )}
+        </div>
+      </Card>
+    );
+  }
 
   const handleSuccess = useCallback(async (response: TransactionResponse) => {
     try {
