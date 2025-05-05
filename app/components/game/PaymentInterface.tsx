@@ -1,10 +1,11 @@
-// app/components/game/PaymentInterface.tsx - Updated with state management
+// app/components/game/PaymentInterface.tsx
 "use client";
 
-import React, { useCallback, useState } from "react";
+import React, { useState, useCallback } from "react";
 import { useGame } from "../../context/GameContext";
 import { Card, Button, Icon } from "../ui/GameUI";
 import { useAccount, useChainId } from "wagmi";
+import { useNotification } from "@coinbase/onchainkit/minikit";
 import { 
   Transaction,
   TransactionButton,
@@ -18,7 +19,6 @@ import {
   TransactionStatusLabel,
   TransactionStatus,
 } from "@coinbase/onchainkit/transaction";
-import { useNotification } from "@coinbase/onchainkit/minikit";
 
 // Get bet amount from environment variables, default to 0 for beta
 const betAmount = process.env.NEXT_PUBLIC_BET_AMOUNT || "0";
@@ -30,87 +30,87 @@ export function PaymentInterface() {
   
   const { 
     betChoice, 
-    error,
+    error, 
     recordPayment, 
     cancelJoining,
-    loading: gameLoading,
+    loading, 
     refreshGameStatus,
-    //currentPlayer,
+    currentPlayer,
     paymentCompleted,
     setPaymentCompleted
   } = useGame();
 
-  // Add local loading state to handle UI feedback during transitions
+  // Add local state for transaction errors separately
   const [localLoading, setLocalLoading] = useState(false);
   const [transactionError, setTransactionError] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   const sendNotification = useNotification();
 
-  const handleSuccess = useCallback(async(response: TransactionResponse) => {
+  const handleSuccess = useCallback(async (response: TransactionResponse) => {
     try {
       const transactionHash = response.transactionReceipts[0].transactionHash;
       
+      console.log("Current Player:", currentPlayer);
       console.log("Transaction successful! Hash:", transactionHash);
       console.log("Full response:", response);
 
-      // Show a loading indicator
+      // Set local loading state while we process
       setLocalLoading(true);
-
+      
       // Record both the bet and payment
-      console.log("Recording payment with bet:", betChoice);
       await recordPayment(transactionHash);
-      console.log("Payment recorded successfully");
-
-      // Send a notification to the user
+      console.log("Payment recorded successfully!");
+      
+      // Send notification
       try {
         await sendNotification({
-          title: isBetaMode ? '[BETA] Bet Placed Successfully':'Bet Placed Successfully',
+          title: isBetaMode ? '[BETA] Bet Placed Successfully' : 'Bet Placed Successfully',
           body: isBetaMode ? 
-            `Your free beta bet of "${betChoice === 'yes' ? 'YES' : 'NO'}" has been placed and payment received. Good luck!` :
-            `Your bet of "${betChoice === 'yes' ? 'YES' : 'NO'}" has been placed and payment received. Good luck!`,
+            `Your free beta bet of "${betChoice === 'yes' ? 'YES' : 'NO'}" has been placed. Good luck!` :
+            `Your bet of "${betChoice === 'yes' ? 'YES' : 'NO'}" has been placed. Good luck!`,
         });
-      } catch (notifyError){
+      } catch (notifyError) {
         console.error("Notification error:", notifyError);
+        // Continue even if notification fails
       }
-
-      // update local state
+      
+      // Set payment completed status - but don't refresh
       setPaymentCompleted(true);
-
-      await refreshGameStatus();
-      console.log("Game status refreshed after payment");
+      
     } catch (error) {
       console.error("Error processing successful transaction:", error);
+      setTransactionError(error instanceof Error ? error.message : "Failed to process transaction");
+    } finally {
       setLocalLoading(false);
     }
-  }, [betChoice, recordPayment, setPaymentCompleted, sendNotification, refreshGameStatus]);
+  }, [betChoice, isBetaMode, recordPayment, sendNotification, setPaymentCompleted]);
 
   const handleError = useCallback((error: TransactionError) => {
     console.error("Transaction failed:", error);
+    setTransactionError(error instanceof Error ? error.message : "Transaction failed. Please try again.");
   }, []);
 
-  const handleCancel = useCallback(async() => {
-    if (gameLoading || localLoading) return;
+  const handleCancel = async() => {
+    if (loading || localLoading) return;
     
-    if (confirm("Are you sure you want to cancel? Your game entry will be removed.")) {
-      await cancelJoining();
-    }
-  }, [cancelJoining, gameLoading, localLoading]);
+    setShowCancelConfirm(true);
+  };
 
-  const confirmCancel = async() =>{
+  const confirmCancel = async() => {
     setLocalLoading(true);
     try {
       await cancelJoining();
-    } catch (error){
+    } catch (error) {
       console.error("Error cancelling:", error);
-      setTransactionError("Failed to cancel, please try again.");
-    } finally{
+      setTransactionError("Failed to cancel. Please try again.");
+    } finally {
       setLocalLoading(false);
       setShowCancelConfirm(false);
     }
-  }
+  };
 
-  // Function to manually proceed to waiting room
+  // Function to manually proceed to waiting room with explicit refresh
   const handleProceedToWaiting = async () => {
     setLocalLoading(true);
     try {
@@ -134,7 +134,7 @@ export function PaymentInterface() {
       {
         to: address, // Send to self
         data: "0x" as `0x${string}`,
-        value: BigInt(0), // Always zero-value transaction for now
+        value: BigInt(0), // Zero-value transaction
       },
     ];
   }, [address, chainId]);
@@ -193,7 +193,7 @@ export function PaymentInterface() {
           </div>
         </div>
         
-        {error || transactionError && (
+        {(error || transactionError) && (
           <div className="p-3 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-lg text-sm">
             {error || transactionError}
           </div>
@@ -209,7 +209,7 @@ export function PaymentInterface() {
             Processing your bet... Please wait
           </div>
         )}
-
+        
         {/* Cancel confirmation dialog */}
         {showCancelConfirm && (
           <div className="p-3 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 rounded-lg text-sm">
@@ -284,12 +284,12 @@ export function PaymentInterface() {
             </div>
           )}
           
-          {!paymentCompleted && (
+          {!paymentCompleted && !showCancelConfirm && (
             <Button 
               variant="outline" 
               className="w-full" 
               onClick={handleCancel}
-              disabled={gameLoading || localLoading}
+              disabled={loading || localLoading}
             >
               Cancel and Exit
             </Button>
