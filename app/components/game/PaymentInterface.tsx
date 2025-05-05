@@ -47,26 +47,109 @@ export function PaymentInterface() {
 
   const sendNotification = useNotification();
 
-  // If in beta mode, skip transaction UI and logic, directly record payment
-  if (isBetaMode) {
-    // If payment is not completed, record it immediately
-    useEffect(() => {
-      if (!paymentCompleted && currentPlayer && !localLoading) {
-        setLocalLoading(true);
-        recordPayment("beta-mode-no-tx").then(() => {
+  useEffect(() => {
+    if (
+      isBetaMode &&
+      !paymentCompleted &&
+      currentPlayer &&
+      !localLoading
+    ) {
+      setLocalLoading(true);
+      recordPayment("beta-mode-no-tx")
+        .then(() => {
           setPaymentCompleted(true);
-          sendNotification && sendNotification({
-            title: '[BETA] Bet Placed Successfully',
-            body: `Your free beta bet of \"${betChoice === 'yes' ? 'YES' : 'NO'}\" has been placed. Good luck!`,
-          });
-        }).catch((error) => {
-          setTransactionError(error instanceof Error ? error.message : "Failed to record payment.");
-        }).finally(() => {
+          sendNotification &&
+            sendNotification({
+              title: '[BETA] Bet Placed Successfully',
+              body: `Your free beta bet of "${betChoice === 'yes' ? 'YES' : 'NO'}" has been placed. Good luck!`,
+            });
+        })
+        .catch((error) => {
+          setTransactionError(
+            error instanceof Error ? error.message : "Failed to record payment."
+          );
+        })
+        .finally(() => {
           setLocalLoading(false);
         });
-      }
-    }, [paymentCompleted, currentPlayer, localLoading, recordPayment, setPaymentCompleted, sendNotification, betChoice]);
+    }
+  }, [isBetaMode, paymentCompleted, currentPlayer, localLoading, recordPayment, setPaymentCompleted, sendNotification, betChoice]);
 
+  const handleSuccess = useCallback(async (response: TransactionResponse) => {
+    try {
+      const transactionHash = response.transactionReceipts[0].transactionHash;
+      setLocalLoading(true);
+      await recordPayment(transactionHash);
+      setPaymentCompleted(true);
+      sendNotification &&
+        sendNotification({
+          title: isBetaMode ? '[BETA] Bet Placed Successfully' : 'Bet Placed Successfully',
+          body: isBetaMode
+            ? `Your free beta bet of "${betChoice === 'yes' ? 'YES' : 'NO'}" has been placed. Good luck!`
+            : `Your bet of "${betChoice === 'yes' ? 'YES' : 'NO'}" has been placed. Good luck!`,
+        });
+    } catch (error) {
+      setTransactionError(error instanceof Error ? error.message : "Failed to process transaction");
+    } finally {
+      setLocalLoading(false);
+    }
+  }, [betChoice, isBetaMode, recordPayment, sendNotification, setPaymentCompleted]);
+
+  const handleError = useCallback((error: TransactionError) => {
+    setTransactionError(error instanceof Error ? error.message : "Transaction failed. Please try again.");
+  }, []);
+
+  const handleCancel = async () => {
+    if (loading || localLoading) return;
+    setShowCancelConfirm(true);
+  };
+
+  const confirmCancel = async () => {
+    setLocalLoading(true);
+    try {
+      await cancelJoining();
+    } catch (error) {
+      setTransactionError("Failed to cancel. Please try again.");
+    } finally {
+      setLocalLoading(false);
+      setShowCancelConfirm(false);
+    }
+  };
+
+  const handleProceedToWaiting = async () => {
+    setLocalLoading(true);
+    try {
+      await refreshGameStatus();
+    } catch (error) {
+      setTransactionError("Failed to update game status. Please try again.");
+    } finally {
+      setLocalLoading(false);
+    }
+  };
+
+  const calls = React.useMemo(() => {
+    if (!address) return [];
+    
+    console.log("Generating transaction to self on chain ID:", chainId);
+    
+    return [
+      {
+        to: address, // Send to self
+        data: "0x" as `0x${string}`,
+        value: BigInt(0), // Zero-value transaction
+      },
+    ];
+  }, [address, chainId]);
+
+  const networkName = React.useMemo(() => {
+    switch(chainId) {
+      case 11155111: return "Sepolia";
+      case 8453: return "Base";
+      default: return "current network";
+    }
+  }, [chainId]);
+
+  if (isBetaMode) {
     return (
       <Card title="Bet Confirmation">
         <div className="space-y-4">
@@ -89,7 +172,7 @@ export function PaymentInterface() {
               </div>
               <Button 
                 className="w-full" 
-                onClick={async () => { await refreshGameStatus(); }}
+                onClick={handleProceedToWaiting}
                 disabled={localLoading}
               >
                 {localLoading ? (
@@ -115,107 +198,6 @@ export function PaymentInterface() {
       </Card>
     );
   }
-
-  const handleSuccess = useCallback(async (response: TransactionResponse) => {
-    try {
-      const transactionHash = response.transactionReceipts[0].transactionHash;
-      
-      console.log("Current Player:", currentPlayer);
-      console.log("Transaction successful! Hash:", transactionHash);
-      console.log("Full response:", response);
-
-      // Set local loading state while we process
-      setLocalLoading(true);
-      
-      // Record both the bet and payment
-      await recordPayment(transactionHash);
-      console.log("Payment recorded successfully!");
-      
-      // Send notification
-      try {
-        await sendNotification({
-          title: isBetaMode ? '[BETA] Bet Placed Successfully' : 'Bet Placed Successfully',
-          body: isBetaMode ? 
-            `Your free beta bet of "${betChoice === 'yes' ? 'YES' : 'NO'}" has been placed. Good luck!` :
-            `Your bet of "${betChoice === 'yes' ? 'YES' : 'NO'}" has been placed. Good luck!`,
-        });
-      } catch (notifyError) {
-        console.error("Notification error:", notifyError);
-        // Continue even if notification fails
-      }
-      
-      // Set payment completed status - but don't refresh
-      setPaymentCompleted(true);
-      
-    } catch (error) {
-      console.error("Error processing successful transaction:", error);
-      setTransactionError(error instanceof Error ? error.message : "Failed to process transaction");
-    } finally {
-      setLocalLoading(false);
-    }
-  }, [betChoice, isBetaMode, recordPayment, sendNotification, setPaymentCompleted]);
-
-  const handleError = useCallback((error: TransactionError) => {
-    console.error("Transaction failed:", error);
-    setTransactionError(error instanceof Error ? error.message : "Transaction failed. Please try again.");
-  }, []);
-
-  const handleCancel = async() => {
-    if (loading || localLoading) return;
-    
-    setShowCancelConfirm(true);
-  };
-
-  const confirmCancel = async() => {
-    setLocalLoading(true);
-    try {
-      await cancelJoining();
-    } catch (error) {
-      console.error("Error cancelling:", error);
-      setTransactionError("Failed to cancel. Please try again.");
-    } finally {
-      setLocalLoading(false);
-      setShowCancelConfirm(false);
-    }
-  };
-
-  // Function to manually proceed to waiting room with explicit refresh
-  const handleProceedToWaiting = async () => {
-    setLocalLoading(true);
-    try {
-      console.log("Manually proceeding to waiting room");
-      await refreshGameStatus();
-    } catch (error) {
-      console.error("Error transitioning to waiting room:", error);
-      setTransactionError("Failed to update game status. Please try again.");
-    } finally {
-      setLocalLoading(false);
-    }
-  };
-
-  // Create transaction params for a zero-value transaction to self
-  const calls = React.useMemo(() => {
-    if (!address) return [];
-    
-    console.log("Generating transaction to self on chain ID:", chainId);
-    
-    return [
-      {
-        to: address, // Send to self
-        data: "0x" as `0x${string}`,
-        value: BigInt(0), // Zero-value transaction
-      },
-    ];
-  }, [address, chainId]);
-
-  // Determine network name based on chainId
-  const networkName = React.useMemo(() => {
-    switch(chainId) {
-      case 11155111: return "Sepolia";
-      case 8453: return "Base";
-      default: return "current network";
-    }
-  }, [chainId]);
 
   return (
     <Card title="Place Your Bet">
